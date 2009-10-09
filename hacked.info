@@ -1,0 +1,5 @@
+name = "Hacked!"
+description = "Shows if drupal or any of it's modules have been changed"
+core = 6.x
+;dependencies[] = diff
+dependencies[] = update

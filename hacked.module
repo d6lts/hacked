@@ -1,0 +1,484 @@
+<?php
+
+define('HACKED_CACHE_TABLE', 'cache');
+
+define('HACKED_STATUS_UNCHECKED', 1);
+define('HACKED_STATUS_UNHACKED', 2);
+define('HACKED_STATUS_HACKED', 3);
+
+function hacked_menu() {
+  $items = array();
+
+  $items['admin/reports/hacked'] = array(
+    'title' => 'Hacked',
+    'description' => 'Get a code hacking report about your installed modules and themes.',
+    'page callback' => 'hacked_test_callback',
+    'access arguments' => array('administer site configuration'),
+    'weight' => 10,
+    //'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Implementation of the hook_theme() registry.
+ */
+function hacked_theme() {
+  return array(
+    'hacked_report' => array(
+      'arguments' => array('data' => NULL),
+    ),
+  );
+}
+
+function hacked_test_callback() {
+  // We're going to be borrowing heavily from the update module
+  module_load_include('inc', 'update', 'update.report');
+  if ($available = update_get_available(TRUE)) {
+    module_load_include('inc', 'update', 'update.compare');
+    $data = update_calculate_project_data($available);
+    $data = hacked_calculate_project_data($data);
+    //return kprint_r($data, TRUE);
+    return theme('hacked_report', $data);
+  }
+  else {
+    return theme('update_report', _update_no_data());
+  }
+
+}
+
+function hacked_process_module($project) {
+  hacked_hash_project($project);
+}
+
+function hacked_calculate_project_data($projects) {
+  foreach ($projects as $project_key => $project) {
+    if ($project['install_type'] == 'official') {
+      $projects[$project_key]['hacked_status'] = HACKED_STATUS_UNCHECKED;
+      // Go get the hashes of the clean copy of the installed version:
+      $projects[$project_key]['clean_hashes'] = hacked_hash_project($project);
+      // If we got some hashes, let's compare it with the local copy:
+      if ($projects[$project_key]['clean_hashes']) {
+        hacked_hash_local($projects[$project_key]);
+        $hacked_count = 0;
+
+        // Now do the comparison:
+        foreach ($projects[$project_key]['clean_hashes'] as $file => $hash) {
+          if ($projects[$project_key]['local_hashes'][$file] != $hash) {
+            $hacked_count++;
+            $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_HACKED;
+          }
+          else {
+            $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_UNHACKED;
+          }
+        }
+
+        if ($hacked_count) {
+          $projects[$project_key]['hacked_status'] = HACKED_STATUS_HACKED;
+        }
+        else {
+          $projects[$project_key]['hacked_status'] = HACKED_STATUS_UNHACKED;
+        }
+      }
+
+
+
+    }
+  }
+
+
+  return $projects;
+}
+
+function hacked_hash_project($project) {
+  if (($project['project_type'] == 'module') || ($project['project_type'] == 'theme')) {
+    if (isset($project['existing_version']) && isset($project['releases'][$project['existing_version']])) {
+      $this_release = $project['releases'][$project['existing_version']];
+
+      // Let's see if there's a download link:
+      $dir = hacked_download_release($this_release['download_link'], $project['project_type'], $project['short_name'], $project['existing_version']);
+      // Now hash that dir:
+      $hashed = hacked_release_generate_hashes_cached($project['project_type'], $project['short_name'], $project['existing_version']);
+      return $hashed;
+
+
+    }
+  }
+}
+
+function hacked_hash_local(&$project) {
+  if (($project['project_type'] == 'module')  || ($project['project_type'] == 'theme')) {
+    // This next line needs fixing, because it is oh so broken!
+    if ($dir = drupal_get_path($project['project_type'], $project['name'])) {
+      $project['local_hashes'] = hacked_scan_directory_generate_hashes($dir);
+    }
+    else {
+      $project['local_hashes'] = array();
+    }
+  }
+}
+
+function hacked_release_form_path_name($type, $name, $version) {
+  $dir = file_directory_temp() . "/hacked-cache/$type/$name";
+  // Build the destination folder tree if it doesn't already exists.
+  if (!file_check_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
+    watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
+    return FALSE;
+  }
+  return file_create_path(file_directory_temp() . "/hacked-cache/$type/$name/$version");
+}
+
+function hacked_download_release($release_url, $type, $short_name, $version) {
+
+  // Compute the path where we'll store this release:
+  $dir = hacked_release_form_path_name($type, $short_name, $version);
+
+
+  // If our directory already exists, we can just return the path to this cached version
+  if (file_exists($dir)) {
+    return $dir;
+  }
+
+  // We've not downloaded this release before:
+  // Let's try to download it:
+  $request = drupal_http_request($release_url);
+
+  // If we downloaded it, try to unpack it:
+  if ($request->code == 200) {
+
+    // Build the destination folder tree if it doesn't already exists.
+    if (!file_check_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
+      watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
+      return FALSE;
+    }
+
+    // Save the tarball someplace:
+    $project_path = file_create_path($dir . '/' . basename($release_url));
+    file_save_data($request->data, $project_path);
+    shell_exec("cd $dir; tar -zxf ". basename($project_path));
+    file_delete($project_path);
+    // If we unpacked it, return the path:
+
+    return $dir;
+
+  }
+
+  // Something went wrong:
+  return FALSE;
+}
+
+function hacked_release_generate_hashes($type, $short_name, $version) {
+  $dir = hacked_release_form_path_name($type, $short_name, $version);
+
+  $module_dir = $dir . "/$short_name";
+
+  // Scan the directory for files:
+  $hashes = hacked_scan_directory_generate_hashes($module_dir);
+  return $hashes;
+}
+
+function hacked_release_generate_hashes_cached($type, $short_name, $version) {
+  static $cached;
+  if (is_null($cached)) {
+    $cached = array();
+  }
+
+  // Return from the static cache if we can:
+  if (isset($cached[$type][$short_name][$version])) {
+    return $cached[$type][$short_name][$version];
+  }
+
+  // Return form the cache system if we can:
+  $key = "hacked:hashes:$type:$short_name:$version";
+  $cache = cache_get($key, HACKED_CACHE_TABLE);
+  if ($cache && isset($cache->data)) {
+    return $cache->data;
+  }
+
+  // Otherwise pass through to the actual function:
+  $cached[$type][$short_name][$version] = hacked_release_generate_hashes($type, $short_name, $version);
+
+  // Save into the cache table:
+  cache_set($key, $cached[$type][$short_name][$version], HACKED_CACHE_TABLE);
+
+  // Return the hashes:
+  return $cached[$type][$short_name][$version];
+}
+
+function hacked_scan_directory_generate_hashes($directory) {
+  $hashes = array();
+  $files = file_scan_directory($directory, '.*');
+  foreach ($files as $file) {
+    $filename = str_replace($directory . '/', '', $file->filename);
+    $hashes[$filename] = md5_file($file->filename);
+  }
+  return $hashes;
+}
+
+
+function hacked_diff_entire_module($release, $working_path, $module_name) {
+  // Build a list of files to diff:
+  $files = file_scan_directory($working_path, '.*');
+  $module_files = array();
+  foreach ($files as $file) {
+    $module_files[] = $file->filename;
+  }
+  $changed = array();
+  $same = array();
+
+  // Now md5 each file, and the one from the module too
+  foreach ($module_files as $file) {
+    $base_file = str_replace($working_path . '/', '', $file);
+    $source_md5 = md5_file($file);
+    $installed_md5 = md5_file(drupal_get_path('module', $module_name) . '/' . $base_file);
+
+    if ($installed_md5 == $source_md5) {
+      $same[] = $base_file;
+    }
+    else {
+      $changed[] = array('installed_file' => drupal_get_path('module', $module_name) . '/' . $base_file, 'original_file' => $file);
+    }
+
+  }
+
+  //dsm($same);
+  foreach ($changed as $change) {
+    hacked_diff_changed($change['installed_file'], $change['original_file']);
+  }
+}
+
+function hacked_diff_changed($installed_file, $original_file) {
+  // Load up the two files and diff them:
+  module_load_include('php', 'diff', 'DiffEngine');
+  $formatter = new DrupalDiffFormatter();
+
+  $diff = new Diff(file($original_file), file($installed_file));
+  $output = theme('diff_table', array(t('Default'), '', t('Current'), ''), $formatter->format($diff), array('class' => 'diff features-diff'));
+  echo($output);
+
+}
+
+/**
+ * Recursively delete all files and folders in the specified filepath, then
+ * delete the containing folder.
+ *
+ * Note that this only deletes visible files with write permission.
+ *
+ * @param string $path
+ *   A filepath relative to file_directory_path.
+ */
+function _hacked_recursive_delete($path) {
+  if (is_file($path) || is_link($path)) {
+    unlink($path);
+  }
+  elseif (is_dir($path)) {
+    $d = dir($path);
+    while (($entry = $d->read()) !== FALSE) {
+      if ($entry == '.' || $entry == '..') continue;
+      $entry_path = $path .'/'. $entry;
+      _hacked_recursive_delete($entry_path);
+    }
+    $d->close();
+    rmdir($path);
+  }
+  else {
+    watchdog('hacked', 'Unknown file type(%path) stat: %stat ',
+              array('%path' => $path,  '%stat' => print_r(stat($path),1)), WATCHDOG_ERROR);
+  }
+
+}
+
+function IsBinary($file)
+{
+  if (file_exists($file)) {
+    if (!is_file($file)) return 0;
+
+    $fh  = fopen($file, "r");
+    $blk = fread($fh, 512);
+    fclose($fh);
+    clearstatcache();
+
+    return (
+      0 or substr_count($blk, "^ -~", "^\r\n")/512 > 0.3
+        or substr_count($blk, "\x00") > 0
+    );
+  }
+  return 0;
+}
+
+/**
+ * Theme project status report.
+ *
+ * @ingroup themeable
+ */
+function theme_hacked_report($data) {
+  $output = '';
+
+  if (!is_array($data)) {
+    $output .= '<p>'. $data .'</p>';
+    return $output;
+  }
+
+  $header = array();
+  $rows = array();
+
+  foreach ($data as $project) {
+    if (!isset($project['hacked_status'])) {
+      continue;
+    }
+
+    switch ($project['hacked_status']) {
+      case HACKED_STATUS_UNHACKED:
+        $class = 'ok';
+        $icon = theme('image', 'misc/watchdog-ok.png', t('Unhacked'), t('Unhacked'));
+        break;
+      case HACKED_STATUS_HACKED:
+        $class = 'error';
+        $icon = theme('image', 'misc/watchdog-error.png', t('hacked'), t('hacked'));
+        break;
+      case HACKED_STATUS_UNCHECKED:
+      default:
+        $class = 'warning';
+        $icon = theme('image', 'misc/watchdog-warning.png', t('unchecked'), t('unchecked'));
+        break;
+    }
+
+    $row = '<div class="version-status">';
+    switch ($project['hacked_status']) {
+      case HACKED_STATUS_UNHACKED:
+        $row .= /*'<span class="current">'. */t('Unhacked')/* .'</span>'*/;
+        break;
+      case HACKED_STATUS_HACKED:
+        $row .= '<span class="not-current">'. t('Hacked!') .'</span>';
+        break;
+      case HACKED_STATUS_UNCHECKED:
+      default:
+        $row .= '<span class="">'. t('Unchecked') .'</span>';
+        break;
+    }
+    $row .= '<span class="icon">'. $icon .'</span>';
+    $row .= "</div>\n";
+
+    $row .= '<div class="project">';
+    if (isset($project['title'])) {
+      if (isset($project['link'])) {
+        $row .= l($project['title'], $project['link']);
+      }
+      else {
+        $row .= check_plain($project['title']);
+      }
+    }
+    else {
+      $row .= check_plain($project['name']);
+    }
+    $row .= ' '. check_plain($project['existing_version']);
+    if ($project['install_type'] == 'dev' && !empty($project['datestamp'])) {
+      $row .= ' <span class="version-date">('. format_date($project['datestamp'], 'custom', 'Y-M-d') .')</span>';
+    }
+    $row .= "</div>\n";
+
+    /*
+    $row .= "<div class=\"versions\">\n";
+
+    if (isset($project['recommended'])) {
+      if ($project['status'] != UPDATE_CURRENT || $project['existing_version'] !== $project['recommended']) {
+
+        // First, figure out what to recommend.
+        // If there's only 1 security update and it has the same version we're
+        // recommending, give it the same CSS class as if it was recommended,
+        // but don't print out a separate "Recommended" line for this project.
+        if (!empty($project['security updates']) && count($project['security updates']) == 1 && $project['security updates'][0]['version'] === $project['recommended']) {
+          $security_class = ' version-recommended version-recommended-strong';
+        }
+        else {
+          $security_class = '';
+          $version_class = 'version-recommended';
+          // Apply an extra class if we're displaying both a recommended
+          // version and anything else for an extra visual hint.
+          if ($project['recommended'] !== $project['latest_version']
+              || !empty($project['also'])
+              || ($project['install_type'] == 'dev'
+                 && isset($project['dev_version'])
+                 && $project['latest_version'] !== $project['dev_version']
+                 && $project['recommended'] !== $project['dev_version'])
+              || (isset($project['security updates'][0])
+                 && $project['recommended'] !== $project['security updates'][0])
+              ) {
+            $version_class .= ' version-recommended-strong';
+          }
+          $row .= theme('update_version', $project['releases'][$project['recommended']], t('Recommended version:'), $version_class);
+        }
+
+        // Now, print any security updates.
+        if (!empty($project['security updates'])) {
+          foreach ($project['security updates'] as $security_update) {
+            $row .= theme('update_version', $security_update, t('Security update:'), 'version-security'. $security_class);
+          }
+        }
+      }
+
+      if ($project['recommended'] !== $project['latest_version']) {
+        $row .= theme('update_version', $project['releases'][$project['latest_version']], t('Latest version:'), 'version-latest');
+      }
+      if ($project['install_type'] == 'dev'
+          && $project['status'] != UPDATE_CURRENT
+          && isset($project['dev_version'])
+          && $project['recommended'] !== $project['dev_version']) {
+        $row .= theme('update_version', $project['releases'][$project['dev_version']], t('Development version:'), 'version-latest');
+      }
+    }
+
+    if (isset($project['also'])) {
+      foreach ($project['also'] as $also) {
+        $row .= theme('update_version', $project['releases'][$also], t('Also available:'), 'version-also-available');
+      }
+    }
+
+    $row .= "</div>\n"; // versions div.
+    */
+
+    $row .= "<div class=\"info\">\n";
+    if (!empty($project['extra'])) {
+      $row .= '<div class="extra">'."\n";
+      foreach ($project['extra'] as $key => $value) {
+        $row .= '<div class="'. $value['class'] .'">';
+        $row .= check_plain($value['label']) .': ';
+        $row .= theme('placeholder', $value['data']);
+        $row .= "</div>\n";
+      }
+      $row .= "</div>\n";  // extra div.
+    }
+
+    $row .= '<div class="includes">';
+    sort($project['includes']);
+    $row .= t('Includes: %includes', array('%includes' => implode(', ', $project['includes'])));
+    $row .= "</div>\n";
+
+    $row .= "</div>\n"; // info div.
+
+    if (!isset($rows[$project['project_type']])) {
+      $rows[$project['project_type']] = array();
+    }
+    $rows[$project['project_type']][] = array(
+      'class' => $class,
+      'data' => array($row),
+    );
+  }
+
+  $project_types = array(
+    'core' => t('Drupal core'),
+    'module' => t('Modules'),
+    'theme' => t('Themes'),
+    'disabled-module' => t('Disabled modules'),
+    'disabled-theme' => t('Disabled themes'),
+  );
+  foreach ($project_types as $type_name => $type_label) {
+    if (!empty($rows[$type_name])) {
+      $output .= "\n<h3>". $type_label ."</h3>\n";
+      $output .= theme('table', $header, $rows[$type_name], array('class' => 'update'));
+    }
+  }
+  drupal_add_css(drupal_get_path('module', 'update') .'/update.css');
+  return $output;
+}
