@@ -1,6 +1,16 @@
 <?php
 // $Id$
 
+/**
+ * @file
+ * The Hacked! module, shows which project have been changed since download.
+ *
+ * We download the original project file, and hash all the files contained
+ * within, then we hash our local copies and compare.
+ * This module should never be used on a production server.
+ */
+
+
 define('HACKED_CACHE_TABLE', 'cache');
 
 define('HACKED_STATUS_UNCHECKED', 1);
@@ -329,7 +339,7 @@ function _hacked_recursive_delete($path) {
     $d = dir($path);
     while (($entry = $d->read()) !== FALSE) {
       if ($entry == '.' || $entry == '..') continue;
-      $entry_path = $path .'/'. $entry;
+      $entry_path = $path . '/' . $entry;
       _hacked_recursive_delete($entry_path);
     }
     $d->close();
@@ -337,13 +347,12 @@ function _hacked_recursive_delete($path) {
   }
   else {
     watchdog('hacked', 'Unknown file type(%path) stat: %stat ',
-              array('%path' => $path,  '%stat' => print_r(stat($path),1)), WATCHDOG_ERROR);
+              array('%path' => $path,  '%stat' => print_r(stat($path), 1)), WATCHDOG_ERROR);
   }
 
 }
 
-function IsBinary($file)
-{
+function hacked_file_is_binary($file) {
   if (file_exists($file)) {
     if (!is_file($file)) return 0;
 
@@ -369,7 +378,7 @@ function theme_hacked_report($data) {
   $output = '';
 
   if (!is_array($data)) {
-    $output .= '<p>'. $data .'</p>';
+    $output .= '<p>' . $data . '</p>';
     return $output;
   }
 
@@ -400,17 +409,17 @@ function theme_hacked_report($data) {
     $row = '<div class="version-status">';
     switch ($project['hacked_status']) {
       case HACKED_STATUS_UNHACKED:
-        $row .= /*'<span class="current">'. */t('Unhacked')/* .'</span>'*/;
+        $row .= t('Unhacked');
         break;
       case HACKED_STATUS_HACKED:
-        $row .= '<span class="not-current">'. t('Hacked!') .'</span>';
+        $row .= '<span class="not-current">' . t('Hacked!') . '</span>';
         break;
       case HACKED_STATUS_UNCHECKED:
       default:
-        $row .= '<span class="">'. t('Unchecked') .'</span>';
+        $row .= '<span class="">' . t('Unchecked') . '</span>';
         break;
     }
-    $row .= '<span class="icon">'. $icon .'</span>';
+    $row .= '<span class="icon">' . $icon . '</span>';
     $row .= "</div>\n";
 
     $row .= '<div class="project">';
@@ -425,9 +434,9 @@ function theme_hacked_report($data) {
     else {
       $row .= check_plain($project['name']);
     }
-    $row .= ' '. check_plain($project['existing_version']);
+    $row .= ' ' . check_plain($project['existing_version']);
     if ($project['install_type'] == 'dev' && !empty($project['datestamp'])) {
-      $row .= ' <span class="version-date">('. format_date($project['datestamp'], 'custom', 'Y-M-d') .')</span>';
+      $row .= ' <span class="version-date">(' . format_date($project['datestamp'], 'custom', 'Y-M-d') . ')</span>';
     }
     $row .= "</div>\n";
 
@@ -493,10 +502,10 @@ function theme_hacked_report($data) {
 
     $row .= "<div class=\"info\">\n";
     if (!empty($project['extra'])) {
-      $row .= '<div class="extra">'."\n";
+      $row .= '<div class="extra">' . "\n";
       foreach ($project['extra'] as $key => $value) {
-        $row .= '<div class="'. $value['class'] .'">';
-        $row .= check_plain($value['label']) .': ';
+        $row .= '<div class="' . $value['class'] . '">';
+        $row .= check_plain($value['label']) . ': ';
         $row .= theme('placeholder', $value['data']);
         $row .= "</div>\n";
       }
@@ -528,10 +537,10 @@ function theme_hacked_report($data) {
   );
   foreach ($project_types as $type_name => $type_label) {
     if (!empty($rows[$type_name])) {
-      $output .= "\n<h3>". $type_label ."</h3>\n";
+      $output .= "\n<h3>" . $type_label . "</h3>\n";
       $output .= theme('table', $header, $rows[$type_name], array('class' => 'update'));
     }
   }
-  drupal_add_css(drupal_get_path('module', 'update') .'/update.css');
+  drupal_add_css(drupal_get_path('module', 'update') . '/update.css');
   return $output;
 }
