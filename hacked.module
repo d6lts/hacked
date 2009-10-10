@@ -40,7 +40,6 @@ function hacked_test_callback() {
     module_load_include('inc', 'update', 'update.compare');
     $data = update_calculate_project_data($available);
     $data = hacked_calculate_project_data($data);
-    //return kprint_r($data, TRUE);
     return theme('hacked_report', $data);
   }
   else {
@@ -93,7 +92,7 @@ function hacked_calculate_project_data($projects) {
 }
 
 function hacked_hash_project($project) {
-  if (($project['project_type'] == 'module') || ($project['project_type'] == 'theme')) {
+  if (($project['project_type'] == 'module') || ($project['project_type'] == 'theme') || ($project['project_type'] == 'core')) {
     if (isset($project['existing_version']) && isset($project['releases'][$project['existing_version']])) {
       $this_release = $project['releases'][$project['existing_version']];
 
@@ -109,9 +108,9 @@ function hacked_hash_project($project) {
 }
 
 function hacked_hash_local(&$project) {
-  if (($project['project_type'] == 'module')  || ($project['project_type'] == 'theme')) {
-    // This next line needs fixing, because it is oh so broken!
-    if ($dir = drupal_get_path($project['project_type'], $project['name'])) {
+  // Are there other types of project we should handle?
+  if (($project['project_type'] == 'module')  || ($project['project_type'] == 'theme')|| ($project['project_type'] == 'core')) {
+    if ($dir = hacked_find_local_project_directory($project)) {
       $project['local_hashes'] = hacked_scan_directory_generate_hashes($dir);
     }
     else {
@@ -120,6 +119,52 @@ function hacked_hash_local(&$project) {
   }
 }
 
+/**
+ * Return the location of the installed project.
+ *
+ * As drupal modules do not need to be named the same as the projects they are
+ * part of we need to be a little smarter about how we find the project
+ * directory to start hashing in.
+ */
+function hacked_find_local_project_directory($project) {
+  // Do we have at least some modules to check for:
+  if (!is_array($project['includes']) || !count($project['includes'])) {
+    return FALSE;
+  }
+
+  // If this project is drupal it, we need to handle it specially
+  if ($project['project_type'] != 'core') {
+    $include = array_shift(array_keys($project['includes']));
+    $include_type = $project['project_type'];
+  }
+  else {
+    // Just use the system module to find where we've installed drupal
+    $include = 'system';
+    $include_type = 'module';
+  }
+
+  $path = drupal_get_path($include_type, $include);
+
+  // Now we need to find the path of the info file in the downloaded package:
+  $temp = '';
+  foreach ($project['clean_hashes'] as $file => $hash) {
+    if (strpos($file, "$include.info") !== FALSE) {
+      // TODO: Replace this with a regular expression
+      $temp = str_replace("$include.info", '', $file);
+      break;
+    }
+  }
+
+  // How many '/' were in that path:
+  $slash_count = substr_count($temp, '/');
+  $back_track = str_repeat('/..', $slash_count);
+  return realpath($path . $back_track);
+
+}
+
+/**
+ * A standard method of forming the path name of the local copy of a project
+ */
 function hacked_release_form_path_name($type, $name, $version) {
   $dir = file_directory_temp() . "/hacked-cache/$type/$name";
   // Build the destination folder tree if it doesn't already exists.
@@ -172,7 +217,14 @@ function hacked_download_release($release_url, $type, $short_name, $version) {
 function hacked_release_generate_hashes($type, $short_name, $version) {
   $dir = hacked_release_form_path_name($type, $short_name, $version);
 
-  $module_dir = $dir . "/$short_name";
+
+  // More special handling for core:
+  if ($type != 'core') {
+    $module_dir = $dir . "/$short_name";
+  }
+  else {
+    $module_dir = $dir . "/$short_name-$version";
+  }
 
   // Scan the directory for files:
   $hashes = hacked_scan_directory_generate_hashes($module_dir);
