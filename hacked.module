@@ -27,7 +27,6 @@ function hacked_menu() {
     'page callback' => 'hacked_test_callback',
     'access arguments' => array('administer site configuration'),
     'weight' => 10,
-    //'type' => MENU_CALLBACK,
   );
 
   $items['admin/reports/hacked/%hacked_project'] = array(
@@ -61,10 +60,11 @@ function hacked_tail_load($arg, $map, $index) {
 function hacked_project_load($short_name) {
   $available = update_get_available();
   $data = update_calculate_project_data($available);
-  $data = hacked_calculate_project_data($data);
-  foreach ($data as $project) {
+  foreach ($data as $key => $project) {
     if ($project['short_name'] == $short_name) {
-      return $project;
+      $data_truncated = array($key => $project);
+      $data_truncated = hacked_calculate_project_data($data_truncated);
+      return $data_truncated[$key];
     }
   }
   return FALSE;
@@ -111,7 +111,15 @@ function hacked_reports_hacked_diff($project, $file) {
   // Let's see if there's a download link:
   $dir = hacked_download_release($this_release['download_link'], $project['project_type'], $project['short_name'], $project['existing_version']);
 
-  $original_file = $dir . '/' . $project['short_name'] . '/' . $file;
+
+  // Special handling for core:
+  if ($project['project_type'] == 'core') {
+    $original_file = $dir . '/' . $project['short_name'] . '-' . $project['existing_version'] . '/' . $file;
+  }
+  else {
+    $original_file = $dir . '/' . $project['short_name'] . '/' . $file;
+  }
+
   if (!hacked_file_is_binary($original_file) && !hacked_file_is_binary($local_file)) {
     return hacked_diff_changed($local_file, $original_file);
   }
@@ -378,41 +386,9 @@ function hacked_scan_directory_generate_hashes($directory) {
   $files = file_scan_directory($directory, '.*');
   foreach ($files as $file) {
     $filename = str_replace($directory . '/', '', $file->filename);
-    $hashes[$filename] = md5_file($file->filename);
+    $hashes[$filename] = sha1_file($file->filename);
   }
   return $hashes;
-}
-
-
-function hacked_diff_entire_module($release, $working_path, $module_name) {
-  // Build a list of files to diff:
-  $files = file_scan_directory($working_path, '.*');
-  $module_files = array();
-  foreach ($files as $file) {
-    $module_files[] = $file->filename;
-  }
-  $changed = array();
-  $same = array();
-
-  // Now md5 each file, and the one from the module too
-  foreach ($module_files as $file) {
-    $base_file = str_replace($working_path . '/', '', $file);
-    $source_md5 = md5_file($file);
-    $installed_md5 = md5_file(drupal_get_path('module', $module_name) . '/' . $base_file);
-
-    if ($installed_md5 == $source_md5) {
-      $same[] = $base_file;
-    }
-    else {
-      $changed[] = array('installed_file' => drupal_get_path('module', $module_name) . '/' . $base_file, 'original_file' => $file);
-    }
-
-  }
-
-  //dsm($same);
-  foreach ($changed as $change) {
-    hacked_diff_changed($change['installed_file'], $change['original_file']);
-  }
 }
 
 function hacked_diff_changed($installed_file, $original_file) {
@@ -424,7 +400,7 @@ function hacked_diff_changed($installed_file, $original_file) {
   $installed_array = file_exists($installed_file) ? file($installed_file) : array();
 
   $diff = new Diff($original_array, $installed_array);
-  $output = theme('diff_table', array(t('Orignal'), '', t('Current'), ''), $formatter->format($diff), array('class' => 'diff features-diff'));
+  $output = theme('diff_table', array(t('Orignal'), '', t('Current'), ''), $formatter->format($diff), array('class' => 'diff hacked-diff'));
   return $output;
 
 }
