@@ -511,26 +511,26 @@ function theme_hacked_report($data) {
     switch ($project['hacked_status']) {
       case HACKED_STATUS_UNHACKED:
         $class = 'ok';
-        $icon = theme('image', 'misc/watchdog-ok.png', t('Unhacked'), t('Unhacked'));
+        $icon = theme('image', 'misc/watchdog-ok.png', t('Unchanged'), t('Unchanged'));
         break;
       case HACKED_STATUS_HACKED:
         $class = 'error';
-        $icon = theme('image', 'misc/watchdog-error.png', t('hacked'), t('hacked'));
+        $icon = theme('image', 'misc/watchdog-error.png', t('Changed'), t('Changed'));
         break;
       case HACKED_STATUS_UNCHECKED:
       default:
         $class = 'warning';
-        $icon = theme('image', 'misc/watchdog-warning.png', t('unchecked'), t('unchecked'));
+        $icon = theme('image', 'misc/watchdog-warning.png', t('Unchecked'), t('Unchecked'));
         break;
     }
 
     $row = '<div class="version-status">';
     switch ($project['hacked_status']) {
       case HACKED_STATUS_UNHACKED:
-        $row .= t('Unhacked');
+        $row .= t('Unchanged');
         break;
       case HACKED_STATUS_HACKED:
-        $row .= '<span class="not-current">' . t('Hacked!') . '</span>';
+        $row .= '<span class="not-current">' . t('Changed!') . '</span>';
         break;
       case HACKED_STATUS_UNCHECKED:
       default:
