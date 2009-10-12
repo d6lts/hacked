@@ -16,6 +16,7 @@ define('HACKED_CACHE_TABLE', 'cache');
 define('HACKED_STATUS_UNCHECKED', 1);
 define('HACKED_STATUS_UNHACKED', 2);
 define('HACKED_STATUS_HACKED', 3);
+define('HACKED_STATUS_DELETED', 4);
 
 function hacked_menu() {
   $items = array();
@@ -29,7 +30,29 @@ function hacked_menu() {
     //'type' => MENU_CALLBACK,
   );
 
+  $items['admin/reports/hacked/%hacked_project'] = array(
+    'title' => 'Hacked',
+    'page callback' => 'hacked_reports_hacked_details',
+    'page arguments' => array(3),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_CALLBACK,
+  );
+
   return $items;
+}
+
+/**
+ * Menu loaded for loading a project from its short name
+ */
+function hacked_project_load($short_name) {
+  $available = update_get_available();
+  $data = update_calculate_project_data($available);
+  foreach ($data as $project) {
+    if ($project['short_name'] == $short_name) {
+      return $project;
+    }
+  }
+  return FALSE;
 }
 
 /**
@@ -40,7 +63,26 @@ function hacked_theme() {
     'hacked_report' => array(
       'arguments' => array('data' => NULL),
     ),
+    'hacked_detailed_report' => array(
+      'arguments' => array('data' => NULL),
+    ),
   );
+}
+
+function hacked_reports_hacked_details($project) {
+  $short_name = $project['short_name'];
+  $projects = hacked_calculate_project_data(array($short_name => $project));
+
+  // Sort the results:
+  arsort($projects[$short_name]['hacked_results']);
+
+
+  // Send the results to the theme function:
+  $out = theme('hacked_detailed_report', $projects);
+
+
+
+  return $out;
 }
 
 function hacked_test_callback() {
@@ -72,18 +114,30 @@ function hacked_calculate_project_data($projects) {
       if ($projects[$project_key]['clean_hashes']) {
         hacked_hash_local($projects[$project_key]);
         $hacked_count = 0;
+        $deleted_count = 0;
 
         // Now do the comparison:
         foreach ($projects[$project_key]['clean_hashes'] as $file => $hash) {
-          if ($projects[$project_key]['local_hashes'][$file] != $hash) {
-            $hacked_count++;
-            $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_HACKED;
+          // Has the file been deleted:
+          if (!isset($projects[$project_key]['local_hashes'][$file])) {
+            $delete_count++;
+            $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_DELETED;
           }
           else {
-            $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_UNHACKED;
+            // We have the file, so has it been changed:
+            if ($projects[$project_key]['local_hashes'][$file] != $hash) {
+              $hacked_count++;
+              $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_HACKED;
+            }
+            else {
+              $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_UNHACKED;
+            }
           }
         }
 
+        // Record aggregate stats
+        $projects[$project_key]['changed_count'] = $hacked_count;
+        $projects[$project_key]['deleted_count'] = $deleted_count;
         if ($hacked_count) {
           $projects[$project_key]['hacked_status'] = HACKED_STATUS_HACKED;
         }
@@ -374,6 +428,70 @@ function hacked_file_is_binary($file) {
  *
  * @ingroup themeable
  */
+function theme_hacked_detailed_report($projects) {
+  foreach ($projects as $project) {
+    foreach ($project['hacked_results'] as $file => $status) {
+      switch ($status) {
+        case HACKED_STATUS_UNHACKED:
+          $class = 'ok';
+          $icon = theme('image', 'misc/watchdog-ok.png', t('Unchanged'), t('Unchanged'));
+          break;
+        case HACKED_STATUS_HACKED:
+          $class = 'error';
+          $icon = theme('image', 'misc/watchdog-error.png', t('Changed'), t('Changed'));
+          break;
+        case HACKED_STATUS_DELETED:
+          $class = 'warning';
+          $icon = theme('image', 'misc/watchdog-warning.png', t('Deleted'), t('Deleted'));
+          break;
+        case HACKED_STATUS_UNCHECKED:
+        default:
+          $class = 'warning';
+          $icon = theme('image', 'misc/watchdog-warning.png', t('Unchecked'), t('Unchecked'));
+          break;
+      }
+
+      $row = '<div class="version-status">';
+      switch ($status) {
+        case HACKED_STATUS_UNHACKED:
+          $row .= t('Unchanged');
+          break;
+        case HACKED_STATUS_HACKED:
+          $row .= '<span class="not-current">' . t('Changed!') . '</span>';
+          break;
+        case HACKED_STATUS_DELETED:
+          $row .= '<span class="">' . t('Deleted') . '</span>';
+          break;
+        case HACKED_STATUS_UNCHECKED:
+        default:
+          $row .= '<span class="">' . t('Unchecked') . '</span>';
+          break;
+      }
+      $row .= '<span class="icon">' . $icon . '</span>';
+      $row .= "</div>\n";
+
+      $row .= '<div class="project">';
+      $row .= check_plain($file);
+      $row .= "</div>\n";
+
+      $row .= "</div>\n";
+
+      $rows[] = array(
+        'class' => $class,
+        'data' => array($row),
+      );
+    }
+    drupal_add_css(drupal_get_path('module', 'update') . '/update.css');
+    return theme('table', NULL, $rows, array('class' => 'update'));
+  }
+  return 'here';
+}
+
+/**
+ * Theme project status report.
+ *
+ * @ingroup themeable
+ */
 function theme_hacked_report($data) {
   $output = '';
 
@@ -440,9 +558,22 @@ function theme_hacked_report($data) {
     }
     $row .= "</div>\n";
 
-    /*
-    $row .= "<div class=\"versions\">\n";
 
+    $row .= "<div class=\"versions\">\n";
+    $row .= '<table class="version version-latest">';
+    $row .= '<tr>';
+    $row .= '<td class="version-title">'. format_plural($project['changed_count'], '1 file changed', '@count files changed') . ', ' . format_plural($project['deleted_count'], '1 file deleted', '@count files deleted') ."</td>\n";
+    $row .= '</tr>';
+    $row .= '</table>';
+    $row .= '<table class="version version-latest">';
+    $row .= '<tr>';
+    $row .= '<td class="version-title">'. l(t('View details of changes'), 'admin/reports/hacked/' . $project['short_name']) ."</td>\n";
+    $row .= '</tr>';
+
+    $row .= '</table>';
+    $row .= "</div>\n";
+
+    /*
     if (isset($project['recommended'])) {
       if ($project['status'] != UPDATE_CURRENT || $project['existing_version'] !== $project['recommended']) {
 
