@@ -160,7 +160,7 @@ function hacked_calculate_project_data($projects) {
         foreach ($projects[$project_key]['clean_hashes'] as $file => $hash) {
           // Has the file been deleted:
           if (!isset($projects[$project_key]['local_hashes'][$file])) {
-            $delete_count++;
+            $deleted_count++;
             $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_DELETED;
           }
           else {
