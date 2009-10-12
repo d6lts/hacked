@@ -124,7 +124,7 @@ function hacked_reports_hacked_diff($project, $file) {
     return hacked_diff_changed($local_file, $original_file);
   }
   //
-  return $file;
+  return t('Cannot hash binary file or file not found: %file', array('%file' => $file));
 }
 
 function hacked_reports_hacked_details($project) {
