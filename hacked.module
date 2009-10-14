@@ -32,7 +32,8 @@ function hacked_menu() {
   );
 
   $items['admin/reports/hacked/%hacked_project'] = array(
-    'title' => 'Hacked',
+    'title callback' => 'hacked_reports_hacked_details_title',
+    'title arguments' => array(3),
     'page callback' => 'hacked_reports_hacked_details',
     'page arguments' => array(3),
     'access arguments' => array('administer site configuration'),
@@ -40,7 +41,8 @@ function hacked_menu() {
   );
 
   $items['admin/reports/hacked/%hacked_project/diff/%hacked_tail'] = array(
-    'title' => 'Hacked',
+    'title callback' => 'hacked_reports_hacked_diff_title',
+    'title arguments' => array(3, 5),
     'load arguments'   => array('%map', '%index'),
     'page callback' => 'hacked_reports_hacked_diff',
     'page arguments' => array(3, 5),
@@ -81,6 +83,14 @@ function hacked_project_load($short_name) {
     }
   }
   return FALSE;
+}
+
+function hacked_reports_hacked_details_title($project) {
+  return t('Hacked status for @project', array('@project' => $project['title']));
+}
+
+function hacked_reports_hacked_diff_title($project, $file) {
+  return t('Hacked status for file @file in project @project', array('@project' => $project['title'], '@file' => $file));
 }
 
 /**
