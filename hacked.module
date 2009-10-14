@@ -118,6 +118,10 @@ function hacked_perm() {
 
 function hacked_reports_hacked_diff($project, $file) {
 
+  if (!module_exists('diff')) {
+    return t('The diff module is required to use this feature.');
+  }
+
   // Find a better way to do this:
   $breadcrumb = array(
     l('Home', '<front>'),
