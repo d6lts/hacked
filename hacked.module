@@ -10,7 +10,6 @@
  * This module should never be used on a production server.
  */
 
-
 define('HACKED_CACHE_TABLE', 'cache');
 
 define('HACKED_STATUS_UNCHECKED', 1);
@@ -18,13 +17,16 @@ define('HACKED_STATUS_UNHACKED', 2);
 define('HACKED_STATUS_HACKED', 3);
 define('HACKED_STATUS_DELETED', 4);
 
+/**
+ * Implementation of hook_menu().
+ */
 function hacked_menu() {
   $items = array();
 
   $items['admin/reports/hacked'] = array(
     'title' => 'Hacked',
     'description' => 'Get a code hacking report about your installed modules and themes.',
-    'page callback' => 'hacked_test_callback',
+    'page callback' => 'hacked_reports_hacked',
     'access arguments' => array('administer site configuration'),
     'weight' => 10,
   );
@@ -46,16 +48,27 @@ function hacked_menu() {
     'type' => MENU_CALLBACK,
   );
 
-
   return $items;
 }
 
+/**
+ * Helper to load the menu tail properly.
+ *
+ * Specifed as %hacked_tail in a menu path, this will return the entirety
+ * of the the rest of the menu path.
+ */
 function hacked_tail_load($arg, $map, $index) {
   return implode('/', array_slice($map, $index));
 }
 
 /**
- * Menu loaded for loading a project from its short name
+ * Menu loader for loading a project from its short name.
+ *
+ * In this function we call the calculate function both the update module and
+ * our hacked module. This may mean we return FALSE when there is no internet
+ * connection.
+ *
+ * @param $short_name The short name of the project to load.
  */
 function hacked_project_load($short_name) {
   $available = update_get_available();
@@ -85,7 +98,7 @@ function hacked_theme() {
 }
 
 /**
- * Implementation of hook_perm()
+ * Implementation of hook_perm().
  */
 function hacked_perm() {
   return array(
@@ -143,7 +156,7 @@ function hacked_reports_hacked_details($project) {
   return $out;
 }
 
-function hacked_test_callback() {
+function hacked_reports_hacked() {
   // We're going to be borrowing heavily from the update module
   module_load_include('inc', 'update', 'update.report');
   if ($available = update_get_available(TRUE)) {

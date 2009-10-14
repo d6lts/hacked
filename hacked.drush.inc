@@ -48,11 +48,67 @@ function hacked_drush_command() {
   return $items;
 }
 
-function hacked_drush_project_details() {
-  drush_print(dt('Test'));
+function hacked_drush_project_details($short_name = '') {
+  $project = hacked_project_load($short_name);
+  if (!$project) {
+    return drush_set_error('HACKED_PROJECT_NOT_FOUND', dt('Could not find project: !project', array('!project' => $short_name)));
+  }
+
+  drush_print(dt('Details for project: @name', array('@name' => $project['title'])));
+  drush_print(dt('Total files: @total_files, files changed: @changed_files, deleted files: @deleted_files', array(
+    '@total_files' => count($project['hacked_results']),
+    '@changed_files' => $project['changed_count'],
+    '@deleted_files' => $project['deleted_count'],
+
+  )));
+  drush_print('');
+
+  drush_print(dt('Detailed results:'));
+  // Sort the results:
+  arsort($project['hacked_results']);
+
+  $rows[] = array(
+    dt('Status'),
+    dt('File'),
+  );
+  $show_unchanged = drush_get_option('include-unchanged', FALSE);
+  foreach ($project['hacked_results'] as $file => $status) {
+    if (!$show_unchanged && $status == HACKED_STATUS_UNHACKED) {
+      continue;
+    }
+    $row = array(
+    );
+
+    // Now add the status:
+    switch ($status) {
+      case HACKED_STATUS_UNHACKED:
+        $row[] = dt('Unchanged');
+        break;
+      case HACKED_STATUS_HACKED:
+        $row[] = t('Changed');
+        break;
+      case HACKED_STATUS_DELETED:
+        $row[] = t('Deleted');
+        break;
+      case HACKED_STATUS_UNCHECKED:
+      default:
+        $row[] = t('Unchecked');
+        break;
+    }
+
+    $row[] = $file;
+
+
+    $rows[] = $row;
+  }
+  drush_print_table($rows, TRUE);
+
+
 }
 
 function hacked_drush_project_list() {
+
+
   // Go get the data:
   module_load_include('inc', 'update', 'update.report');
   if ($available = update_get_available(TRUE)) {
@@ -79,7 +135,7 @@ function hacked_drush_project_list() {
           $row[] = dt('Unchanged');
           break;
         case HACKED_STATUS_HACKED:
-          $row[] = t('Changed!');
+          $row[] = t('Changed');
           break;
         case HACKED_STATUS_UNCHECKED:
         default:
@@ -94,5 +150,8 @@ function hacked_drush_project_list() {
       $rows[] = $row;
     }
     drush_print_table($rows, TRUE);
+
   }
+
+
 }
