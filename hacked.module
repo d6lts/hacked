@@ -216,7 +216,7 @@ function hacked_hash_local(&$project) {
   // Are there other types of project we should handle?
   if (($project['project_type'] == 'module')  || ($project['project_type'] == 'theme')|| ($project['project_type'] == 'core')) {
     if ($dir = hacked_find_local_project_directory($project)) {
-      $project['local_hashes'] = hacked_scan_directory_generate_hashes($dir);
+      $project['local_hashes'] = hacked_scan_directory_generate_hashes($dir, TRUE);
     }
     else {
       $project['local_hashes'] = array();
@@ -348,7 +348,7 @@ function hacked_release_generate_hashes_cached($type, $short_name, $version) {
   }
 
   // Return form the cache system if we can:
-  $key = "hacked:hashes:$type:$short_name:$version";
+  $key = "hacked:clean:hashes:$type:$short_name:$version";
   $cache = cache_get($key, HACKED_CACHE_TABLE);
   if ($cache && isset($cache->data)) {
     return $cache->data;
@@ -364,13 +364,46 @@ function hacked_release_generate_hashes_cached($type, $short_name, $version) {
   return $cached[$type][$short_name][$version];
 }
 
-function hacked_scan_directory_generate_hashes($directory) {
+/**
+ * Hash the contents of a directory, optionally retrieving from cache.
+ *
+ * @param $directory The directory to hash.
+ * @param $cache Can I use a cache for the files in this directory?
+ */
+function hacked_scan_directory_generate_hashes($directory, $cache = FALSE) {
+
+  $timestamps = array();
+  // Try to load some details from the cache:
+  if ($cache) {
+    $key = "hacked:directory:timestamps:$directory";
+    // The key could get really long, guard against that:
+    if (strlen($key) > 255) {
+      $key = "hacked:directory:timestamps:" . sha1($directory);
+    }
+    $cache_ob = cache_get($key, HACKED_CACHE_TABLE);
+    if ($cache_ob && isset($cache_ob->data)) {
+      $timestamps = $cache_ob->data;
+    }
+  }
+
   $hashes = array();
   $files = file_scan_directory($directory, '.*');
   foreach ($files as $file) {
     $filename = str_replace($directory . '/', '', $file->filename);
-    $hashes[$filename] = sha1_file($file->filename);
+    // Check the timestamp if available:
+    if ((isset($timestamps[$file->filename])) && (filemtime($file->filename) == $timestamps[$file->filename]['timestamp'])) {
+      $hashes[$filename] = $timestamps[$file->filename]['hash'];
+    }
+    else {
+      $timestamps[$file->filename]['hash'] = $hashes[$filename] = sha1_file($file->filename);
+      $timestamps[$file->filename]['timestamp'] = filemtime($file->filename);
+    }
   }
+
+  if ($cache) {
+    cache_set($key, $timestamps, HACKED_CACHE_TABLE);
+  }
+
   return $hashes;
 }
 
