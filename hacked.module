@@ -10,7 +10,7 @@
  * This module should never be used on a production server.
  */
 
-define('HACKED_CACHE_TABLE', 'cache');
+define('HACKED_CACHE_TABLE', 'cache_hacked');
 
 define('HACKED_STATUS_UNCHECKED', 1);
 define('HACKED_STATUS_UNHACKED', 2);
