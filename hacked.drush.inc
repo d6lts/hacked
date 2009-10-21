@@ -48,6 +48,15 @@ function hacked_drush_command() {
     ),
   );
 
+  $items['hacked diff'] = array(
+    'callback' => 'hacked_drush_project_diff',
+    'description' => "Output a unified diff of the project specified.",
+    'drupal dependencies' => array('hacked'),
+    'arguments' => array(
+      'project' => 'The machine name of the project to report on.',
+    ),
+  );
+
   return $items;
 }
 
@@ -165,5 +174,35 @@ function hacked_drush_project_details($short_name = '') {
   }
   drush_print_table($rows, TRUE);
 
+
+}
+
+/**
+ * Drush command callback that shows the list of changes/unchanged files in a project.
+ *
+ * You may specify the --include-unchanged option to show unchanged files too,
+ * otherwise just the changed and deleted files are shown.
+ */
+function hacked_drush_project_diff($short_name = '') {
+  $project = hacked_project_load($short_name);
+  if (!$project) {
+    return drush_set_error('HACKED_PROJECT_NOT_FOUND', dt('Could not find project: !project', array('!project' => $short_name)));
+  }
+  $local_location = realpath(hacked_find_local_project_directory($project));
+  $clean_location = hacked_download_release($this_release['download_link'], $project['project_type'], $project['short_name'], $project['existing_version']);
+  // More special handling for core:
+  if ($project['type'] != 'core') {
+    $clean_location = $clean_location . "/${project['short_name']}";
+  }
+  else {
+    $clean_location = $clean_location . "/${project['short_name']}-${project['version']}";
+  }
+  $clean_location = realpath($clean_location);
+  drush_shell_exec("diff -upr $local_location $clean_location");
+
+  $lines = drush_shell_exec_output();
+  foreach ($lines as $line) {
+    drush_print($line);
+  }
 
 }
