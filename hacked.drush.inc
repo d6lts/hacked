@@ -198,11 +198,25 @@ function hacked_drush_project_diff($short_name = '') {
     $clean_location = $clean_location . "/${project['short_name']}-${project['version']}";
   }
   $clean_location = realpath($clean_location);
-  drush_shell_exec("diff -upr $local_location $clean_location");
+  drush_shell_exec("diff -upr $clean_location $local_location");
 
   $lines = drush_shell_exec_output();
+  $local_location_trim = dirname($local_location) . '/';
+  $clean_location_trim = dirname($clean_location) . '/';
   foreach ($lines as $line) {
+    if (strpos($line, '+++') === 0) {
+      $line = str_replace($local_location_trim, '', $line);
+    }
+    if (strpos($line, '---') === 0) {
+      $line = str_replace($clean_location_trim, '', $line);
+    }
+    if (strpos($line, 'diff -upr') === 0) {
+      $line = str_replace($clean_location_trim, 'old/', $line);
+      $line = str_replace($local_location_trim, 'new/', $line);
+    }
+
     drush_print($line);
+
   }
 
 }
