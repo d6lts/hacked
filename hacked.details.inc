@@ -35,6 +35,10 @@ function theme_hacked_detailed_report($projects) {
           $class = 'warning';
           $icon = theme('image', 'misc/watchdog-warning.png', t('Deleted'), t('Deleted'));
           break;
+        case HACKED_STATUS_PERMISSION_DENIED:
+          $class = 'warning';
+          $icon = theme('image', 'misc/watchdog-warning.png', t('Permission Denied'), t('Permission Denied'));
+          break;
         case HACKED_STATUS_UNCHECKED:
         default:
           $class = 'warning';
@@ -53,6 +57,9 @@ function theme_hacked_detailed_report($projects) {
         case HACKED_STATUS_DELETED:
           $row .= '<span class="">' . t('Deleted') . '</span>';
           break;
+        case HACKED_STATUS_PERMISSION_DENIED:
+          $row .= '<span class="">' . t('Permission Denied') . '</span>';
+          break;
         case HACKED_STATUS_UNCHECKED:
         default:
           $row .= '<span class="">' . t('Unchecked') . '</span>';
@@ -62,7 +69,7 @@ function theme_hacked_detailed_report($projects) {
       $row .= "</div>\n";
 
       $row .= '<div class="project">';
-      if (user_access('view diffs of changed files') && module_exists('diff') && !hacked_file_is_binary(hacked_find_local_project_directory($project) . '/' . $file)) {
+      if (user_access('view diffs of changed files') && module_exists('diff') && ($status != HACKED_STATUS_UNHACKED) && !hacked_file_is_binary(hacked_find_local_project_directory($project) . '/' . $file)) {
         $row .= l($file, 'admin/reports/hacked/' . $project['short_name'] . '/diff/' . $file);
       }
       else {

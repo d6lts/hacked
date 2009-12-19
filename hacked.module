@@ -16,6 +16,7 @@ define('HACKED_STATUS_UNCHECKED', 1);
 define('HACKED_STATUS_UNHACKED', 2);
 define('HACKED_STATUS_HACKED', 3);
 define('HACKED_STATUS_DELETED', 4);
+define('HACKED_STATUS_PERMISSION_DENIED', 5);
 
 /**
  * Implementation of hook_menu().
@@ -156,6 +157,7 @@ function hacked_calculate_project_data($projects) {
         hacked_hash_local($projects[$project_key]);
         $hacked_count = 0;
         $deleted_count = 0;
+        $unreadable_count = 0;
 
         // Now do the comparison:
         foreach ($projects[$project_key]['clean_hashes'] as $file => $hash) {
@@ -165,8 +167,13 @@ function hacked_calculate_project_data($projects) {
             $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_DELETED;
           }
           else {
+	    // If we can't read the file, mark it as permission denied
+	    if (!is_readable(hacked_find_local_project_directory($projects[$project_key]) . '/' . $file)) {
+              $unreadable_count++;
+              $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_PERMISSION_DENIED;
+	    }
             // We have the file, so has it been changed:
-            if ($projects[$project_key]['local_hashes'][$file] != $hash) {
+            elseif ($projects[$project_key]['local_hashes'][$file] != $hash) {
               $hacked_count++;
               $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_HACKED;
             }
@@ -179,6 +186,7 @@ function hacked_calculate_project_data($projects) {
         // Record aggregate stats
         $projects[$project_key]['changed_count'] = $hacked_count;
         $projects[$project_key]['deleted_count'] = $deleted_count;
+        $projects[$project_key]['unreadable_count'] = $unreadable_count;
         if ($hacked_count) {
           $projects[$project_key]['hacked_status'] = HACKED_STATUS_HACKED;
         }
@@ -410,6 +418,7 @@ function hacked_scan_directory_generate_hashes($directory, $cache = FALSE) {
 function hacked_file_is_binary($file) {
   if (file_exists($file)) {
     if (!is_file($file)) return 0;
+    if (!is_readable($file)) return 1;
 
     $fh  = fopen($file, "r");
     $blk = fread($fh, 512);
