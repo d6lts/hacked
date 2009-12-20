@@ -1,11 +1,39 @@
 <?php
 
+// $Id$
+
 function hacked_install() {
   drupal_install_schema('hacked');
+  hacked_install_add_exported_cache();
 }
 
 function hacked_uninstall() {
   drupal_uninstall_schema('hacked');
+}
+
+function hacked_install_add_exported_cache() {
+  // Find files in the cache:
+  $files = file_scan_directory(drupal_get_path('module', 'hacked') . '/cache_export', '.inc$');
+  foreach($files as $file) {
+
+    $fileparts = explode('/', $file->filename);
+    if (count($fileparts) > 3) {
+      $version = array_pop($fileparts);
+      $version = substr($version, 0, strlen($version) - 4);
+      $name = array_pop($fileparts);
+      $type = array_pop($fileparts);
+
+      if (($type == 'core') || ($type == 'theme') || ($type == 'module')) {
+        unset($hashes);
+        include $file->filename;
+        if (isset($hashes)) {
+          cache_set($key = "hacked:clean:hashes:$type:$name:$version", $hashes, defined('HACKED_CACHE_TABLE') ? HACKED_CACHE_TABLE : 'cache_hacked');
+        }
+
+      }
+    }
+  }
+
 }
 
 function hacked_schema() {

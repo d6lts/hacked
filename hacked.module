@@ -42,7 +42,7 @@ function hacked_menu() {
     'file' => 'hacked.details.inc',
   );
 
-  $items['admin/reports/hacked/%hacked_project/diff/%hacked_tail'] = array(
+  $items['admin/reports/hacked/%hacked_project_nocache/diff/%hacked_tail'] = array(
     'title callback' => 'hacked_reports_hacked_diff_title',
     'title arguments' => array(3, 5),
     'load arguments'   => array('%map', '%index'),
@@ -52,6 +52,25 @@ function hacked_menu() {
     'type' => MENU_CALLBACK,
     'file' => 'hacked.diff.inc',
   );
+
+  $items['admin/reports/hacked-export'] = array(
+    'title' => 'Export from Hacked! cache',
+    'page callback' => 'hacked_reports_export_select',
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_CALLBACK,
+    'file' => 'hacked.export.inc',
+  );
+
+  $items['admin/reports/hacked-export/%'] = array(
+    'title' => 'Export from Hacked! cache',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('hacked_reports_exports_export_form', 3),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_CALLBACK,
+    'file' => 'hacked.export.inc',
+  );
+
+
 
   return $items;
 }
@@ -75,17 +94,30 @@ function hacked_tail_load($arg, $map, $index) {
  *
  * @param $short_name The short name of the project to load.
  */
-function hacked_project_load($short_name) {
+function hacked_project_load($short_name, $ensure_downloaded = FALSE) {
   $available = update_get_available();
   $data = update_calculate_project_data($available);
   foreach ($data as $key => $project) {
     if ($project['short_name'] == $short_name) {
       $data_truncated = array($key => $project);
-      $data_truncated = hacked_calculate_project_data($data_truncated);
+      $data_truncated = hacked_calculate_project_data($data_truncated, $ensure_downloaded);
       return $data_truncated[$key];
     }
   }
   return FALSE;
+}
+
+/**
+ * Menu loader for loading a project from its short name.
+ *
+ * In this function we call the calculate function both the update module and
+ * our hacked module. This may mean we return FALSE when there is no internet
+ * connection.
+ *
+ * @param $short_name The short name of the project to load.
+ */
+function hacked_project_nocache_load($short_name) {
+  return hacked_project_load($short_name, TRUE);
 }
 
 /**
@@ -146,12 +178,12 @@ function hacked_process_module($project) {
   hacked_hash_project($project);
 }
 
-function hacked_calculate_project_data($projects) {
+function hacked_calculate_project_data($projects, $ensure_downloaded = FALSE) {
   foreach ($projects as $project_key => $project) {
     if ($project['install_type'] == 'official') {
       $projects[$project_key]['hacked_status'] = HACKED_STATUS_UNCHECKED;
       // Go get the hashes of the clean copy of the installed version:
-      $projects[$project_key]['clean_hashes'] = hacked_hash_project($project);
+      $projects[$project_key]['clean_hashes'] = hacked_hash_project($project, $ensure_downloaded);
       // If we got some hashes, let's compare it with the local copy:
       if ($projects[$project_key]['clean_hashes']) {
         hacked_hash_local($projects[$project_key]);
@@ -167,11 +199,11 @@ function hacked_calculate_project_data($projects) {
             $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_DELETED;
           }
           else {
-	    // If we can't read the file, mark it as permission denied
-	    if (!is_readable(hacked_find_local_project_directory($projects[$project_key]) . '/' . $file)) {
+	          // If we can't read the file, mark it as permission denied
+	          if (!is_readable(hacked_find_local_project_directory($projects[$project_key]) . '/' . $file)) {
               $unreadable_count++;
               $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_PERMISSION_DENIED;
-	    }
+	          }
             // We have the file, so has it been changed:
             elseif ($projects[$project_key]['local_hashes'][$file] != $hash) {
               $hacked_count++;
@@ -204,14 +236,16 @@ function hacked_calculate_project_data($projects) {
   return $projects;
 }
 
-function hacked_hash_project($project) {
+function hacked_hash_project($project, $ensure_downloaded = FALSE) {
   if (($project['project_type'] == 'module') || ($project['project_type'] == 'theme') || ($project['project_type'] == 'core')) {
     if (isset($project['existing_version']) && isset($project['releases'][$project['existing_version']])) {
       $this_release = $project['releases'][$project['existing_version']];
 
-      // Let's see if there's a download link:
-      $dir = hacked_download_release($this_release['download_link'], $project['project_type'], $project['short_name'], $project['existing_version']);
-      // Now hash that dir:
+      // Can we get this from the cache?
+      if ($ensure_downloaded || !hacked_project_hashes_are_cached($project['project_type'], $project['short_name'], $project['existing_version'])) {
+        $dir = hacked_download_release($this_release['download_link'], $project['project_type'], $project['short_name'], $project['existing_version']);
+      }
+
       $hashed = hacked_release_generate_hashes_cached($project['project_type'], $project['short_name'], $project['existing_version']);
       return $hashed;
 
@@ -344,11 +378,28 @@ function hacked_release_generate_hashes($type, $short_name, $version) {
   return $hashes;
 }
 
-function hacked_release_generate_hashes_cached($type, $short_name, $version) {
-  static $cached;
-  if (is_null($cached)) {
-    $cached = array();
+function hacked_project_hashes_are_cached($type, $short_name, $version) {
+  static $cached = array();
+
+  // Return from the static cache if we can:
+  if (!isset($cached[$type][$short_name][$version])) {
+
+    // Return form the cache system if we can:
+    $key = "hacked:clean:hashes:$type:$short_name:$version";
+    $cache = cache_get($key, HACKED_CACHE_TABLE);
+    if ($cache && isset($cache->data)) {
+      $cached[$type][$short_name][$version] = TRUE;
+    }
+    else {
+      $cached[$type][$short_name][$version] = FALSE;
+    }
   }
+
+  return $cached[$type][$short_name][$version];
+}
+
+function hacked_release_generate_hashes_cached($type, $short_name, $version) {
+  static $cached = array();
 
   // Return from the static cache if we can:
   if (isset($cached[$type][$short_name][$version])) {
