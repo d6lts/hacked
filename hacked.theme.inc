@@ -1,5 +1,7 @@
 <?php
 
+// $Id$
+
 /**
  * Theme project status report.
  *
@@ -75,12 +77,12 @@ function theme_hacked_report($data) {
     $row .= "<div class=\"versions\">\n";
     $row .= '<table class="version version-latest">';
     $row .= '<tr>';
-    
+
     $unreadable_message = "";
     if ($project['unreadable_count'] > 0) {
       $unreadable_message = ', ' . format_plural($project['unreadable_count'], '1 unreadable file', '@count unreadable files');
     }
-    
+
     $row .= '<td class="version-title">'. format_plural($project['changed_count'], '1 file changed', '@count files changed') . ', ' . format_plural($project['deleted_count'], '1 file deleted', '@count files deleted') . $unreadable_message . "</td>\n";
     $row .= '</tr>';
     $row .= '</table>';
