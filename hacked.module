@@ -92,7 +92,10 @@ function hacked_tail_load($arg, $map, $index) {
  * our hacked module. This may mean we return FALSE when there is no internet
  * connection.
  *
- * @param $short_name The short name of the project to load.
+ * @param $short_name
+ *   The short name of the project to load.
+ * @param $ensure_downloaded
+ *   Should the project be downloaded to the local cache.
  */
 function hacked_project_load($short_name, $ensure_downloaded = FALSE) {
   $available = update_get_available();
@@ -132,6 +135,13 @@ function hacked_reports_hacked_details_title($project) {
  */
 function hacked_reports_hacked_diff_title($project, $file) {
   return t('Hacked status for file @file in project @project', array('@project' => $project['title'], '@file' => $file));
+}
+
+/**
+ * Implementation of hook_flush_caches().
+ */
+function hacked_flush_caches() {
+  return array(HACKED_CACHE_TABLE);
 }
 
 /**
@@ -243,7 +253,15 @@ function hacked_hash_project($project, $ensure_downloaded = FALSE) {
 
       // Can we get this from the cache?
       if ($ensure_downloaded || !hacked_project_hashes_are_cached($project['project_type'], $project['short_name'], $project['existing_version'])) {
-        $dir = hacked_download_release($this_release['download_link'], $project['project_type'], $project['short_name'], $project['existing_version']);
+        // We check to see if cvs deploy's sticky fingers have been in this project
+        if (isset($project['info']['_info_file_ctime']) && $project['info']['_info_file_ctime']) {
+          // Download this using CVS:
+          $dir = hacked_cvs_checkout_release($project['project_type'], $project['short_name'], $project['existing_version'], $project['info']['_hacked_info_filename']);
+        }
+        else {
+          $dir = hacked_download_release($this_release['download_link'], $project['project_type'], $project['short_name'], $project['existing_version']);
+        }
+
       }
 
       $hashed = hacked_release_generate_hashes_cached($project['project_type'], $project['short_name'], $project['existing_version']);
@@ -482,4 +500,129 @@ function hacked_file_is_binary($file) {
     );
   }
   return 0;
+}
+
+/**
+ * Returns the version of the installed cvs executable on this machine
+ */
+function hacked_cvs_executable_get_version() {
+  $cvs_cmd = hacked_cvs_get_command();
+  // Run exec looking for the command:
+  $output_lines = array();
+  $return_value;
+  exec("$cvs_cmd --version", $output_lines, $return_value);
+  if ($return_value === 0) {
+    // We executed correctly, go looking for the version line:
+    $version = 'Concurrent Versions System (CVS)';
+    if (is_array($output_lines)) {
+      foreach ($output_lines as $line) {
+        if (strpos($line, 'CVS')) {
+          $version = $line;
+          break;
+        }
+      }
+    }
+    return $version;
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Helper function to return the command to run cvs on the command line.
+ */
+function hacked_cvs_get_command() {
+  $cvs_cmd = variable_get('hacked_cvs_cmd', 'cvs');
+  return $cvs_cmd;
+}
+
+/**
+ * Checks out a folder from CVS to a temporary directory.
+ *
+ * @param $cvsroot
+ *   The CVSROOT of the folder to check out.
+ * @param $folder
+ *   The module to check out from CVS.
+ * @param $checkout_location
+ *   The location in which to place the checkout.
+ * @param $tag
+ *   The tag to checkout, defaults to 'HEAD'.
+ * @return
+ *   Either FALSE on failure or the location of the checked out files.
+ */
+function hacked_cvs_checkout($cvsroot, $folder, $checkout_location, $checkout_folder, $tag = 'HEAD') {
+  $cvs_cmd = hacked_cvs_get_command();
+  $t = $checkout_location . '/' . $checkout_folder;
+  file_check_directory($checkout_location, FILE_CREATE_DIRECTORY);
+  file_check_directory($t, FILE_CREATE_DIRECTORY);
+
+  exec("cd $checkout_location; $cvs_cmd -z6 -d$cvsroot -q checkout -d $checkout_folder -r $tag $folder", $output_lines, $return_value);
+
+  if ($return_value == 0) {
+    return $t;
+  }
+
+  return FALSE;
+
+}
+
+function hacked_cvs_checkout_release($type, $name, $version, $filename) {
+  if ($type == 'core') {
+    $cvs_root = ':pserver:anonymous:anonymous@cvs.drupal.org:/cvs/drupal';
+    $modules_folder = "drupal";
+    $destination_folder = "$name-$version";
+
+  }
+  else {
+    // Contrib then:
+    $cvs_root = ':pserver:anonymous:anonymous@cvs.drupal.org:/cvs/drupal-contrib';
+    $modules_folder = "contributions/${type}s/$name";
+    $destination_folder = "$name";
+  }
+
+  $destination_dir = hacked_release_form_path_name($type, $name, $version);
+
+  $tag = '';
+  $file = new stdClass();
+  $file->filename = $filename;
+  _hacked_cvs_deploy_version_alter($tag, $file);
+  if (empty($tag)) {
+    $tag = 'HEAD';
+  }
+
+  return hacked_cvs_checkout($cvs_root, $modules_folder, $destination_dir, $destination_folder, $tag);
+
+}
+
+function _hacked_cvs_deploy_version_alter(&$version, $file) {
+  static $available = array();
+  $match = array();
+  if (empty($version)) {
+    // The .info file contains no version data. Find the version based
+    // on the sticky tag in the local workspace (the CVS/Tag file).
+    $cvs_dir = dirname($file->filename) .'/CVS';
+    if (is_dir($cvs_dir)) {
+      $tag = '';  // If there's no Tag file, there's no tag, a.k.a. HEAD.
+      if (file_exists($cvs_dir .'/Tag')) {
+        $tag_file = trim(file_get_contents($cvs_dir .'/Tag'));
+        if ($tag_file) {
+          // Get the sticky tag for this workspace: strip off the leading 'T'.
+          $tag = preg_replace('@^(T|N)@', '', $tag_file);
+        }
+      }
+      $version = $tag;
+    }
+  }
+  // The weird concatenation prevents CVS from 'expanding' this $Name.
+  elseif (preg_match('/\$'.'Name: (.*?)\$/', $version, $match)) {
+    $version = trim($match[1]);
+  }
+}
+
+/**
+ * Implementation of hook_system_info_alter().
+ */
+function hacked_system_info_alter(&$info, $file) {
+  $info['_hacked_info_filename'] = $file->filename;
 }
