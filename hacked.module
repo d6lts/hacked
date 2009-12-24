@@ -311,6 +311,7 @@ function hacked_find_local_project_directory($project) {
   $path = drupal_get_path($include_type, $include);
 
   // Now we need to find the path of the info file in the downloaded package:
+  // TODO: Can replace this with using the info file stuff we put there earlier:
   $temp = '';
   foreach ($project['clean_hashes'] as $file => $hash) {
     if (strpos($file, "$include.info") !== FALSE) {
