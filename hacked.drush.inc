@@ -201,8 +201,8 @@ function hacked_drush_project_diff($short_name = '') {
   drush_shell_exec("diff -upr $clean_location $local_location");
 
   $lines = drush_shell_exec_output();
-  $local_location_trim = dirname($local_location) . '/';
-  $clean_location_trim = dirname($clean_location) . '/';
+  $local_location_trim = dirname($local_location . '/dummy.file') . '/';
+  $clean_location_trim = dirname($clean_location . '/dummy.file') . '/';
   foreach ($lines as $line) {
     if (strpos($line, '+++') === 0) {
       $line = str_replace($local_location_trim, '', $line);
