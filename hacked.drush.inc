@@ -14,10 +14,12 @@
  */
 function hacked_drush_help($section) {
   switch ($section) {
-    case 'drush:hacked list-projects':
+    case 'drush:hacked-list-projects':
       return dt('List projects and their hacked/unhacked status.');
-    case 'drush:hacked details':
+    case 'drush:hacked-details':
       return dt('Show details of the files in one project, and the hacked/unhacked status of those files.');
+    case 'drush:hacked-diff':
+      return dt('Output a unified diff of the specified project.');
 
   }
 }
@@ -33,14 +35,12 @@ function hacked_drush_help($section) {
 function hacked_drush_command() {
   $items = array();
 
-  $items['hacked list-projects'] = array(
-    'callback' => 'hacked_drush_project_list',
+  $items['hacked-list-projects'] = array(
     'description' => "List all projects that can be analysed by Hacked! ",
     'drupal dependencies' => array('hacked'),
   );
 
-  $items['hacked details'] = array(
-    'callback' => 'hacked_drush_project_details',
+  $items['hacked-details'] = array(
     'description' => "Show the Hacked! report about a specific project.",
     'drupal dependencies' => array('hacked'),
     'arguments' => array(
@@ -48,8 +48,7 @@ function hacked_drush_command() {
     ),
   );
 
-  $items['hacked diff'] = array(
-    'callback' => 'hacked_drush_project_diff',
+  $items['hacked-diff'] = array(
     'description' => "Output a unified diff of the project specified.",
     'drupal dependencies' => array('hacked'),
     'arguments' => array(
@@ -63,8 +62,7 @@ function hacked_drush_command() {
 /**
  * Drush command callback that shows the listing of changed/unchanged projects.
  */
-function hacked_drush_project_list() {
-
+function drush_hacked_list_projects() {
 
   // Go get the data:
   module_load_include('inc', 'update', 'update.report');
@@ -119,7 +117,7 @@ function hacked_drush_project_list() {
  * You may specify the --include-unchanged option to show unchanged files too,
  * otherwise just the changed and deleted files are shown.
  */
-function hacked_drush_project_details($short_name = '') {
+function drush_hacked_details($short_name = '') {
   $project = hacked_project_load($short_name);
   if (!$project) {
     return drush_set_error('HACKED_PROJECT_NOT_FOUND', dt('Could not find project: !project', array('!project' => $short_name)));
@@ -183,7 +181,7 @@ function hacked_drush_project_details($short_name = '') {
  * You may specify the --include-unchanged option to show unchanged files too,
  * otherwise just the changed and deleted files are shown.
  */
-function hacked_drush_project_diff($short_name = '') {
+function drush_hacked_diff($short_name = '') {
   $project = hacked_project_load($short_name);
   if (!$project) {
     return drush_set_error('HACKED_PROJECT_NOT_FOUND', dt('Could not find project: !project', array('!project' => $short_name)));
