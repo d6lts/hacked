@@ -40,6 +40,11 @@ function hacked_reports_hacked_diff($project, $file) {
   return t('Cannot hash binary file or file not found: %file', array('%file' => $file));
 }
 
+/**
+ * Hacked! version of the core function, can return hidden files too.
+ * 
+ * @see file_scan_directory().
+ */ 
 function hacked_diff_changed($installed_file, $original_file) {
   // Load up the two files and diff them:
   module_load_include('php', 'diff', 'DiffEngine');
