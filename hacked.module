@@ -189,6 +189,7 @@ function hacked_process_module($project) {
 }
 
 function hacked_calculate_project_data($projects, $ensure_downloaded = FALSE) {
+  
   foreach ($projects as $project_key => $project) {
     //if ($project['install_type'] == 'official') {
       $projects[$project_key]['hacked_status'] = HACKED_STATUS_UNCHECKED;
@@ -465,7 +466,7 @@ function hacked_scan_directory_generate_hashes($directory, $cache = FALSE) {
   }
 
   $hashes = array();
-  $files = file_scan_directory($directory, '.*');
+  $files = hacked_file_scan_directory($directory, '.*', array('.', '..', 'CVS', '.svn', '.git'));
   foreach ($files as $file) {
     $filename = str_replace($directory . '/', '', $file->filename);
     // Check the timestamp if available:
@@ -633,3 +634,37 @@ function hacked_system_info_alter(&$info, $file) {
     $info['_hacked_is_cvs_checkout'] = FALSE;
   }
 }
+
+function hacked_file_scan_directory($dir, $mask, $nomask = array('.', '..', 'CVS'), $callback = 0, $recurse = TRUE, $key = 'filename', $min_depth = 0, $depth = 0) {
+  $key = (in_array($key, array('filename', 'basename', 'name')) ? $key : 'filename');
+  $files = array();
+
+  if (is_dir($dir) && $handle = opendir($dir)) {
+    while (FALSE !== ($file = readdir($handle))) {
+      if (!in_array($file, $nomask)) {
+        if (is_dir("$dir/$file") && $recurse) {
+          // Give priority to files in this folder by merging them in after any subdirectory files.
+          $files = array_merge(hacked_file_scan_directory("$dir/$file", $mask, $nomask, $callback, $recurse, $key, $min_depth, $depth + 1), $files);
+        }
+        elseif ($depth >= $min_depth && ereg($mask, $file)) {
+          // Always use this match over anything already set in $files with the same $$key.
+          $filename = "$dir/$file";
+          $basename = basename($file);
+          $name = substr($basename, 0, strrpos($basename, '.'));
+          $files[$$key] = new stdClass();
+          $files[$$key]->filename = $filename;
+          $files[$$key]->basename = $basename;
+          $files[$$key]->name = $name;
+          if ($callback) {
+            $callback($filename);
+          }
+        }
+      }
+    }
+
+    closedir($handle);
+  }
+
+  return $files;
+}
+
