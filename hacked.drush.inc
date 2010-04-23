@@ -65,10 +65,8 @@ function hacked_drush_command() {
 function drush_hacked_list_projects() {
 
   // Go get the data:
-  module_load_include('inc', 'update', 'update.report');
-  if ($available = update_get_available(TRUE)) {
-    module_load_include('inc', 'update', 'update.compare');
-    $data = update_calculate_project_data($available);
+  if ($available = update_status_get_available(TRUE)) {
+    $data = update_status_calculate_project_data($available);
     $data = hacked_calculate_project_data($data);
     // Now print the data using drush:
     $rows[] = array(

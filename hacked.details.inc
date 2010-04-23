@@ -72,7 +72,7 @@ function theme_hacked_detailed_report($projects) {
 
       $row .= '<div class="project">';
       if (user_access('view diffs of changed files') && module_exists('diff') && ($status != HACKED_STATUS_UNHACKED) && !hacked_file_is_binary(hacked_find_local_project_directory($project) . '/' . $file)) {
-        $row .= l($file, 'admin/reports/hacked/' . $project['short_name'] . '/diff/' . $file);
+        $row .= l($file, 'admin/logs/hacked/' . $project['short_name'] . '/diff/' . $file);
       }
       else {
         $row .= check_plain($file);
@@ -86,8 +86,8 @@ function theme_hacked_detailed_report($projects) {
         'data' => array($row),
       );
     }
-    drupal_add_css(drupal_get_path('module', 'update') . '/update.css');
-    return theme('table', NULL, $rows, array('class' => 'update'));
+    drupal_add_css(drupal_get_path('module', 'update_status') . '/update_status.css');
+    return theme('table', NULL, $rows, array('class' => 'update-status'));
   }
   return 'here';
 }

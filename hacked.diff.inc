@@ -12,9 +12,9 @@ function hacked_reports_hacked_diff($project, $file) {
   $breadcrumb = array(
     l('Home', '<front>'),
     l('Administer', 'admin'),
-    l('Reports', 'admin/reports'),
-    l('Hacked', 'admin/reports/hacked'),
-    l($project['title'], 'admin/reports/hacked/' . $project['short_name']),
+    l('Reports', 'admin/logs'),
+    l('Hacked', 'admin/logs/hacked'),
+    l($project['title'], 'admin/logs/hacked/' . $project['short_name']),
   );
   drupal_set_breadcrumb($breadcrumb);
 
@@ -42,7 +42,7 @@ function hacked_reports_hacked_diff($project, $file) {
 
 function hacked_diff_changed($installed_file, $original_file) {
   // Load up the two files and diff them:
-  module_load_include('php', 'diff', 'DiffEngine');
+  require_once(drupal_get_path('module', 'diff') . '/DiffEngine.php');
   $formatter = new DrupalDiffFormatter();
 
   $original_array = file_exists($original_file) ? file($original_file) : array();

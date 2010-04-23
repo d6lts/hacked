@@ -88,7 +88,7 @@ function theme_hacked_report($data) {
     $row .= '</table>';
     $row .= '<table class="version version-latest">';
     $row .= '<tr>';
-    $row .= '<td class="version-title">'. l(t('View details of changes'), 'admin/reports/hacked/' . $project['short_name']) ."</td>\n";
+    $row .= '<td class="version-title">'. l(t('View details of changes'), 'admin/logs/hacked/' . $project['short_name']) ."</td>\n";
     $row .= '</tr>';
 
     $row .= '</table>';
@@ -164,9 +164,9 @@ function theme_hacked_report($data) {
       $row .= "</div>\n";  // extra div.
     }
 
-    $row .= '<div class="includes">';
-    sort($project['includes']);
-    $row .= t('Includes: %includes', array('%includes' => implode(', ', $project['includes'])));
+    $row .= '<div class="modules">';
+    sort($project['modules']);
+    $row .= t('Includes: %includes', array('%includes' => implode(', ', $project['modules'])));
     $row .= "</div>\n";
 
     $row .= "</div>\n"; // info div.
@@ -190,9 +190,9 @@ function theme_hacked_report($data) {
   foreach ($project_types as $type_name => $type_label) {
     if (!empty($rows[$type_name])) {
       $output .= "\n<h3>" . $type_label . "</h3>\n";
-      $output .= theme('table', $header, $rows[$type_name], array('class' => 'update'));
+      $output .= theme('table', $header, $rows[$type_name], array('class' => 'update-status'));
     }
   }
-  drupal_add_css(drupal_get_path('module', 'update') . '/update.css');
+  drupal_add_css(drupal_get_path('module', 'update_status') . '/update_status.css');
   return $output;
 }
