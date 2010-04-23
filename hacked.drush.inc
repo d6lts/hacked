@@ -78,7 +78,7 @@ function drush_hacked_list_projects() {
     );
     foreach ($data as $project) {
       $row = array(
-        $project['title'],
+        empty($project['title']) ? $project['name'] : $project['title'],
         $project['existing_version']
       );
 
