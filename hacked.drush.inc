@@ -73,6 +73,7 @@ function drush_hacked_list_projects() {
     // Now print the data using drush:
     $rows[] = array(
       dt('Project'),
+      dt('Shortname'),
       dt('Version'),
       dt('Status'),
       dt('Changed'),
@@ -81,6 +82,7 @@ function drush_hacked_list_projects() {
     foreach ($data as $project) {
       $row = array(
         empty($project['title']) ? $project['name'] : $project['title'],
+        $project['name'],
         $project['existing_version']
       );
 
