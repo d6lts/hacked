@@ -40,6 +40,11 @@ function hacked_drush_command() {
     'drupal dependencies' => array('hacked'),
   );
 
+  $items['hacked-lock-modified'] = array(
+    'description' => "Lock all projects that Hacked! detects are modified, so that drush pm-updatecode will not touch them. (drush-4.x+ only)",
+    'drupal dependencies' => array('hacked'),
+  );
+
   $items['hacked-details'] = array(
     'description' => "Show the Hacked! report about a specific project.",
     'drupal dependencies' => array('hacked'),
@@ -109,6 +114,67 @@ function drush_hacked_list_projects() {
   }
 
 
+}
+
+/**
+ * Lock all of the modified files so that pm-updatecode will not
+ * touch them.
+ */
+function drush_hacked_lock_modified() {
+  $drupal_root = drush_get_context('DRUSH_DRUPAL_ROOT');
+  module_load_include('inc', 'update', 'update.report');
+  if (isset($drupal_root) && ($available = update_get_available(TRUE))) {
+    module_load_include('inc', 'update', 'update.compare');
+    $data = update_calculate_project_data($available);
+    $data = hacked_calculate_project_data($data);
+
+    foreach ($data as $project) {
+      $row = array(
+        empty($project['title']) ? $project['name'] : $project['title'],
+        $project['name'],
+        $project['existing_version']
+      );
+
+      // Lock the file if it is not already locked.
+      switch ($project['hacked_status']) {
+        case HACKED_STATUS_HACKED:
+          $local_location = realpath(hacked_find_local_project_directory($project));
+          $lockfile = $local_location . '/.drush-lock-update';
+          if (!file_exists($lockfile)) {
+            drush_op('file_put_contents', $lockfile, dt("Locked: modified."));
+            drush_print(dt("Locked: !project", array('!project' => $project['name'])));
+          }
+          else {
+            drush_print(dt("!project is modified and already locked", array('!project' => $project['name'])));
+          }
+          break;
+        case HACKED_STATUS_UNHACKED:
+        case HACKED_STATUS_UNCHECKED:
+        default:
+          break;
+      }
+    }
+  }
+}
+
+/**
+ * Add a --lock-modified flag to pm-updatecode
+ */
+function drush_hacked_pre_pm_updatecode() {
+  if (drush_get_option('lock-modified')) {
+    drush_print(dt('Hacked! is checking for modified projects...'));
+    drush_hacked_lock_modified();
+    drush_print(dt('Hacked! modification check complete.'));
+  }
+}
+
+/**
+ * Add --lock-modified to the pm-updatecode and pm-update help
+ */
+function hacked_drush_help_alter(&$command) {
+  if (($command['command'] == 'pm-updatecode') || ($command['command'] == 'pm-update')) {
+    $command['sub-options']['--lock']['--lock-modified'] = "Lock any project that Hacked! determines is modified.";
+  }
 }
 
 /**
