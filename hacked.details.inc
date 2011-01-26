@@ -3,15 +3,11 @@
 // $Id$
 
 function hacked_reports_hacked_details($project) {
-  $short_name = $project['short_name'];
-  $projects = hacked_calculate_project_data(array($short_name => $project));
-
-  // Sort the results:
-  arsort($projects[$short_name]['hacked_results']);
+  $project->compute_differences();
 
 
   // Send the results to the theme function:
-  $out = theme('hacked_detailed_report', $projects);
+  $out = theme('hacked_detailed_report', $project);
 
   return $out;
 }
@@ -21,8 +17,7 @@ function hacked_reports_hacked_details($project) {
  *
  * @ingroup themeable
  */
-function theme_hacked_detailed_report($projects) {
-  foreach ($projects as $project) {
+function theme_hacked_detailed_report($project) {
     foreach ($project['hacked_results'] as $file => $status) {
       switch ($status) {
         case HACKED_STATUS_UNHACKED:
@@ -88,6 +83,4 @@ function theme_hacked_detailed_report($projects) {
     }
     drupal_add_css(drupal_get_path('module', 'update') . '/update.css');
     return theme('table', NULL, $rows, array('class' => 'update'));
-  }
-  return 'here';
 }
