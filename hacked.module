@@ -42,35 +42,18 @@ function hacked_menu() {
     'file' => 'hacked.details.inc',
   );
 
-  $items['admin/reports/hacked/%hacked_project_nocache/diff/%hacked_tail'] = array(
-    'title callback' => 'hacked_reports_hacked_diff_title',
-    'title arguments' => array(3, 5),
-    'load arguments'   => array('%map', '%index'),
-    'page callback' => 'hacked_reports_hacked_diff',
-    'page arguments' => array(3, 5),
-    'access arguments' => array('view diffs of changed files'),
-    'type' => MENU_CALLBACK,
-    'file' => 'hacked.diff.inc',
-  );
-
-  $items['admin/reports/hacked-export'] = array(
-    'title' => 'Export from Hacked! cache',
-    'page callback' => 'hacked_reports_export_select',
-    'access arguments' => array('administer site configuration'),
-    'type' => MENU_CALLBACK,
-    'file' => 'hacked.export.inc',
-  );
-
-  $items['admin/reports/hacked-export/%'] = array(
-    'title' => 'Export from Hacked! cache',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('hacked_reports_exports_export_form', 3),
-    'access arguments' => array('administer site configuration'),
-    'type' => MENU_CALLBACK,
-    'file' => 'hacked.export.inc',
-  );
-
-
+  if (module_exists('diff')) {
+    $items['admin/reports/hacked/%hacked_project/diff/%hacked_tail'] = array(
+      'title callback' => 'hacked_reports_hacked_diff_title',
+      'title arguments' => array(3, 5),
+      'load arguments'   => array('%map', '%index'),
+      'page callback' => 'hacked_reports_hacked_diff',
+      'page arguments' => array(3, 5),
+      'access arguments' => array('view diffs of changed files'),
+      'type' => MENU_CALLBACK,
+      'file' => 'hacked.diff.inc',
+    );
+  }
 
   return $items;
 }
@@ -98,29 +81,8 @@ function hacked_tail_load($arg, $map, $index) {
  *   Should the project be downloaded to the local cache.
  */
 function hacked_project_load($short_name, $ensure_downloaded = FALSE) {
-  $available = update_get_available();
-  $data = update_calculate_project_data($available);
-  foreach ($data as $key => $project) {
-    if ($project['short_name'] == $short_name) {
-      $data_truncated = array($key => $project);
-      $data_truncated = hacked_calculate_project_data($data_truncated, $ensure_downloaded);
-      return $data_truncated[$key];
-    }
-  }
-  return FALSE;
-}
-
-/**
- * Menu loader for loading a project from its short name.
- *
- * In this function we call the calculate function both the update module and
- * our hacked module. This may mean we return FALSE when there is no internet
- * connection.
- *
- * @param $short_name The short name of the project to load.
- */
-function hacked_project_nocache_load($short_name) {
-  return hacked_project_load($short_name, TRUE);
+  module_load_include('inc', 'hacked', 'includes/hacked_project');
+  return new hackedProject($short_name_name);
 }
 
 /**
@@ -414,4 +376,3 @@ function hacked_file_scan_directory($dir, $mask, $nomask = array('.', '..', 'CVS
 
   return $files;
 }
-
