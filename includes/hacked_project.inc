@@ -217,6 +217,50 @@ class hackedProject {
     $this->result = $results;
   }
 
+  /**
+   * Return a nice report, a simple overview of the status of this project.
+   */
+  function compute_report() {
+    // Ensure we know the differences.
+    $this->compute_differences();
+
+    // Do some counting
+
+    $report = array(
+      'status' => HACKED_STATUS_UNCHECKED,
+      'counts' => array(
+        'same' => count($this->result['same']),
+        'different' => count($this->result['different']),
+        'missing' => count($this->result['missing']),
+        'access_denied' => count($this->result['access_denied']),
+      ),
+      'title' => $this->project_info['title'],
+      'link' => $this->project_info['link'],
+      'name' => $this->project_info['name'],
+      'existing_version' => $this->project_info['existing_version'],
+      'install_type' => $this->project_info['install_type'],
+      'datestamp' => $this->project_info['datestamp'],
+      'project_type' => $this->project_info['project_type'],
+      'includes' => $this->project_info['includes'],
+    );
+
+    if ($report['counts']['access_denied'] > 0) {
+      $report['status'] = HACKED_STATUS_PERMISSION_DENIED;
+    }
+    elseif ($report['counts']['missing'] > 0) {
+      $report['status'] = HACKED_STATUS_HACKED;
+    }
+    elseif ($report['counts']['different'] > 0) {
+      $report['status'] = HACKED_STATUS_HACKED;
+    }
+    elseif ($report['counts']['different'] > 0) {
+      $report['status'] = HACKED_STATUS_UNHACKED;
+    }
+
+    return $report;
+
+  }
+
 }
 
 /**

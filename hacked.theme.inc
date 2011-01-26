@@ -79,11 +79,11 @@ function theme_hacked_report($data) {
     $row .= '<tr>';
 
     $unreadable_message = "";
-    if ($project['unreadable_count'] > 0) {
-      $unreadable_message = ', ' . format_plural($project['unreadable_count'], '1 unreadable file', '@count unreadable files');
+    if ($project['counts']['access_denied'] > 0) {
+      $unreadable_message = ', ' . format_plural($project['counts']['access_denied'], '1 unreadable file', '@count unreadable files');
     }
 
-    $row .= '<td class="version-title">'. format_plural($project['changed_count'], '1 file changed', '@count files changed') . ', ' . format_plural($project['deleted_count'], '1 file deleted', '@count files deleted') . $unreadable_message . "</td>\n";
+    $row .= '<td class="version-title">'. format_plural($project['counts']['different'], '1 file changed', '@count files changed') . ', ' . format_plural($project['counts']['missing'], '1 file deleted', '@count files deleted') . $unreadable_message . "</td>\n";
     $row .= '</tr>';
     $row .= '</table>';
     $row .= '<table class="version version-latest">';
@@ -150,7 +150,7 @@ function theme_hacked_report($data) {
     }
 
     $row .= "</div>\n"; // versions div.
-    */
+
 
     $row .= "<div class=\"info\">\n";
     if (!empty($project['extra'])) {
@@ -163,6 +163,7 @@ function theme_hacked_report($data) {
       }
       $row .= "</div>\n";  // extra div.
     }
+    */
 
     $row .= '<div class="includes">';
     sort($project['includes']);

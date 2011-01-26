@@ -169,6 +169,9 @@ function hacked_perm() {
   );
 }
 
+/**
+ * Page callback to build up a full report.
+ */
 function hacked_reports_hacked() {
   // We're going to be borrowing heavily from the update module
   module_load_include('inc', 'update', 'update.report');
@@ -188,302 +191,54 @@ function hacked_process_module($project) {
   hacked_hash_project($project);
 }
 
-function hacked_calculate_project_data($projects, $ensure_downloaded = FALSE) {
-  
-  foreach ($projects as $project_key => $project) {
-    //if ($project['install_type'] == 'official') {
-      $projects[$project_key]['hacked_status'] = HACKED_STATUS_UNCHECKED;
-      // Go get the hashes of the clean copy of the installed version:
-      $projects[$project_key]['clean_hashes'] = hacked_hash_project($project, $ensure_downloaded);
-      // If we got some hashes, let's compare it with the local copy:
-      if ($projects[$project_key]['clean_hashes']) {
-        hacked_hash_local($projects[$project_key]);
-        $hacked_count = 0;
-        $deleted_count = 0;
-        $unreadable_count = 0;
+function hacked_calculate_project_data($projects, $force = FALSE) {
 
-        // Now do the comparison:
-        foreach ($projects[$project_key]['clean_hashes'] as $file => $hash) {
-          // Has the file been deleted:
-          if (!isset($projects[$project_key]['local_hashes'][$file])) {
-            $deleted_count++;
-            $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_DELETED;
-          }
-          else {
-	          // If we can't read the file, mark it as permission denied
-	          if (!is_readable(hacked_find_local_project_directory($projects[$project_key]) . '/' . $file)) {
-              $unreadable_count++;
-              $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_PERMISSION_DENIED;
-	          }
-            // We have the file, so has it been changed:
-            elseif ($projects[$project_key]['local_hashes'][$file] != $hash) {
-              $hacked_count++;
-              $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_HACKED;
-            }
-            else {
-              $projects[$project_key]['hacked_results'][$file] = HACKED_STATUS_UNHACKED;
-            }
-          }
-        }
-
-        // Record aggregate stats
-        $projects[$project_key]['changed_count'] = $hacked_count;
-        $projects[$project_key]['deleted_count'] = $deleted_count;
-        $projects[$project_key]['unreadable_count'] = $unreadable_count;
-        if ($hacked_count) {
-          $projects[$project_key]['hacked_status'] = HACKED_STATUS_HACKED;
-        }
-        else {
-          $projects[$project_key]['hacked_status'] = HACKED_STATUS_UNHACKED;
-        }
-      }
-
-
-
-    //}
-  }
-
-
-  return $projects;
-}
-
-function hacked_hash_project($project, $ensure_downloaded = FALSE) {
-  if (($project['project_type'] == 'module') || ($project['project_type'] == 'theme') || ($project['project_type'] == 'core')) {
-    if (isset($project['existing_version']) && isset($project['releases'][$project['existing_version']])) {
-      $this_release = $project['releases'][$project['existing_version']];
-
-      // Can we get this from the cache?
-      if ($ensure_downloaded || !hacked_project_hashes_are_cached($project['project_type'], $project['short_name'], $project['existing_version'])) {
-        // We check to see if cvs deploy's sticky fingers have been in this project
-        if (isset($project['info']['_hacked_is_cvs_checkout']) && $project['info']['_hacked_is_cvs_checkout']) {
-          // Download this using CVS:
-          $dir = hacked_cvs_checkout_release($project['project_type'], $project['short_name'], $project['existing_version'], $project['info']['_hacked_info_filename']);
-        }
-        else {
-          $dir = hacked_download_release($this_release['download_link'], $project['project_type'], $project['short_name'], $project['existing_version']);
-        }
-
-      }
-
-      $hashed = hacked_release_generate_hashes_cached($project['project_type'], $project['short_name'], $project['existing_version']);
-      return $hashed;
-
-
-    }
-  }
-}
-
-function hacked_hash_local(&$project) {
-  // Are there other types of project we should handle?
-  if (($project['project_type'] == 'module')  || ($project['project_type'] == 'theme')|| ($project['project_type'] == 'core')) {
-    if ($dir = hacked_find_local_project_directory($project)) {
-      $project['local_hashes'] = hacked_scan_directory_generate_hashes($dir, TRUE);
-    }
-    else {
-      $project['local_hashes'] = array();
-    }
-  }
-}
-
-/**
- * Return the location of the installed project.
- *
- * As drupal modules do not need to be named the same as the projects they are
- * part of we need to be a little smarter about how we find the project
- * directory to start hashing in.
- */
-function hacked_find_local_project_directory($project) {
-  // Do we have at least some modules to check for:
-  if (!is_array($project['includes']) || !count($project['includes'])) {
-    return FALSE;
-  }
-
-  // If this project is drupal it, we need to handle it specially
-  if ($project['project_type'] != 'core') {
-    $include = array_shift(array_keys($project['includes']));
-    $include_type = $project['project_type'];
-  }
-  else {
-    // Just use the system module to find where we've installed drupal
-    $include = 'system';
-    $include_type = 'module';
-  }
-
-  $path = drupal_get_path($include_type, $include);
-
-  // Now we need to find the path of the info file in the downloaded package:
-  // TODO: Can replace this with using the info file stuff we put there earlier:
-  $temp = '';
-  foreach ($project['clean_hashes'] as $file => $hash) {
-    if (strpos($file, "$include.info") !== FALSE) {
-      // TODO: Replace this with a regular expression
-      $temp = str_replace("$include.info", '', $file);
-      break;
-    }
-  }
-
-  // How many '/' were in that path:
-  $slash_count = substr_count($temp, '/');
-  $back_track = str_repeat('/..', $slash_count);
-  return realpath($path . $back_track);
-
-}
-
-/**
- * A standard method of forming the path name of the local copy of a project
- */
-function hacked_release_form_path_name($type, $name, $version) {
-  $dir = file_directory_temp() . "/hacked-cache/$type/$name";
-  // Build the destination folder tree if it doesn't already exists.
-  if (!file_check_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
-    watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
-    return FALSE;
-  }
-  return file_create_path(file_directory_temp() . "/hacked-cache/$type/$name/$version");
-}
-
-function hacked_download_release($release_url, $type, $short_name, $version) {
-
-  // Compute the path where we'll store this release:
-  $dir = hacked_release_form_path_name($type, $short_name, $version);
-
-
-  // If our directory already exists, we can just return the path to this cached version
-  if (file_exists($dir)) {
-    return $dir;
-  }
-
-  // We've not downloaded this release before:
-  // Let's try to download it:
-  $request = drupal_http_request($release_url);
-
-  // If we downloaded it, try to unpack it:
-  if ($request->code == 200) {
-
-    // Build the destination folder tree if it doesn't already exists.
-    if (!file_check_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
-      watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
-      return FALSE;
-    }
-
-    // Save the tarball someplace:
-    $project_path = file_create_path($dir . '/' . basename($release_url));
-    file_save_data($request->data, $project_path);
-    shell_exec("cd $dir; tar -zxf ". basename($project_path));
-    file_delete($project_path);
-    // If we unpacked it, return the path:
-
-    return $dir;
-
-  }
-
-  // Something went wrong:
-  return FALSE;
-}
-
-function hacked_release_generate_hashes($type, $short_name, $version) {
-  $dir = hacked_release_form_path_name($type, $short_name, $version);
-
-
-  // More special handling for core:
-  if ($type != 'core') {
-    $module_dir = $dir . "/$short_name";
-  }
-  else {
-    $module_dir = $dir . "/$short_name-$version";
-  }
-
-  // Scan the directory for files:
-  $hashes = hacked_scan_directory_generate_hashes($module_dir);
-  return $hashes;
-}
-
-function hacked_project_hashes_are_cached($type, $short_name, $version) {
-  static $cached = array();
-
-  // Return from the static cache if we can:
-  if (!isset($cached[$type][$short_name][$version])) {
-
-    // Return form the cache system if we can:
-    $key = "hacked:clean:hashes:$type:$short_name:$version";
-    $cache = cache_get($key, HACKED_CACHE_TABLE);
-    if ($cache && isset($cache->data)) {
-      $cached[$type][$short_name][$version] = TRUE;
-    }
-    else {
-      $cached[$type][$short_name][$version] = FALSE;
-    }
-  }
-
-  return $cached[$type][$short_name][$version];
-}
-
-function hacked_release_generate_hashes_cached($type, $short_name, $version) {
-  static $cached = array();
-
-  // Return from the static cache if we can:
-  if (isset($cached[$type][$short_name][$version])) {
-    return $cached[$type][$short_name][$version];
-  }
-
-  // Return form the cache system if we can:
-  $key = "hacked:clean:hashes:$type:$short_name:$version";
-  $cache = cache_get($key, HACKED_CACHE_TABLE);
-  if ($cache && isset($cache->data)) {
+  // Try to get the report form cache if we can.
+  $cache = cache_get('hacked:full-report');
+  if (!empty($cache->data) && !$force) {
     return $cache->data;
   }
 
-  // Otherwise pass through to the actual function:
-  $cached[$type][$short_name][$version] = hacked_release_generate_hashes($type, $short_name, $version);
+  // Enter a batch to build the report.
+  $operations = array();
+  foreach ($projects as $project) {
+    $operations[] = array(
+      'hacked_build_report_batch',
+      array($project['short_name']),
+    );
+  }
 
-  // Save into the cache table:
-  cache_set($key, $cached[$type][$short_name][$version], HACKED_CACHE_TABLE);
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'hacked_build_report_batch_finished',
+  );
 
-  // Return the hashes:
-  return $cached[$type][$short_name][$version];
+  batch_set($batch);
+  // End page execution and run the batch.
+  batch_process();
+
+
 }
 
 /**
- * Hash the contents of a directory, optionally retrieving from cache.
- *
- * @param $directory The directory to hash.
- * @param $cache Can I use a cache for the files in this directory?
+ * Batch callback to build the hacked report.
  */
-function hacked_scan_directory_generate_hashes($directory, $cache = FALSE) {
-
-  $timestamps = array();
-  // Try to load some details from the cache:
-  if ($cache) {
-    $key = "hacked:directory:timestamps:$directory";
-    // The key could get really long, guard against that:
-    if (strlen($key) > 255) {
-      $key = "hacked:directory:timestamps:" . sha1($directory);
-    }
-    $cache_ob = cache_get($key, HACKED_CACHE_TABLE);
-    if ($cache_ob && isset($cache_ob->data)) {
-      $timestamps = $cache_ob->data;
-    }
+function hacked_build_report_batch($project_name, &$context) {
+  if (!isset($context['results']['report'])) {
+    $context['results']['report'] = array();
   }
+  module_load_include('inc', 'hacked', 'includes/hacked_project');
+  $project = new hackedProject($project_name);
+  $context['results']['report'][$project_name] = $project->compute_report();
+}
 
-  $hashes = array();
-  $files = hacked_file_scan_directory($directory, '.*', array('.', '..', 'CVS', '.svn', '.git'));
-  foreach ($files as $file) {
-    $filename = str_replace($directory . '/', '', $file->filename);
-    // Check the timestamp if available:
-    if ((isset($timestamps[$file->filename])) && (filemtime($file->filename) == $timestamps[$file->filename]['timestamp'])) {
-      $hashes[$filename] = $timestamps[$file->filename]['hash'];
-    }
-    else {
-      $timestamps[$file->filename]['hash'] = $hashes[$filename] = sha1_file($file->filename);
-      $timestamps[$file->filename]['timestamp'] = filemtime($file->filename);
-    }
+/**
+ * Completion callback for the report batch.
+ */
+function hacked_build_report_batch_finished($success, $results, $operations) {
+  if ($success) {
+    cache_set('hacked:full-report', $results['report'], 'cache', strtotime('+1 day'));
   }
-
-  if ($cache) {
-    cache_set($key, $timestamps, HACKED_CACHE_TABLE);
-  }
-
-  return $hashes;
 }
 
 function hacked_file_is_binary($file) {
@@ -623,21 +378,8 @@ function _hacked_cvs_deploy_version_alter(&$version, $file) {
 }
 
 /**
- * Implementation of hook_system_info_alter().
- */
-function hacked_system_info_alter(&$info, $file) {
-  $info['_hacked_info_filename'] = $file->filename;
-  if (is_dir(dirname($file->filename) .'/CVS')) {
-    $info['_hacked_is_cvs_checkout'] = TRUE;
-  }
-  else {
-    $info['_hacked_is_cvs_checkout'] = FALSE;
-  }
-}
-
-/**
  * Hacked! version of the core function, can return hidden files too.
- * 
+ *
  * @see file_scan_directory().
  */
 function hacked_file_scan_directory($dir, $mask, $nomask = array('.', '..', 'CVS'), $callback = 0, $recurse = TRUE, $key = 'filename', $min_depth = 0, $depth = 0) {
