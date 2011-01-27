@@ -3,11 +3,8 @@
 // $Id$
 
 function hacked_reports_hacked_details($project) {
-  $project->compute_differences();
-
-
   // Send the results to the theme function:
-  $out = theme('hacked_detailed_report', $project);
+  $out = theme('hacked_detailed_report', $project->compute_details());
 
   return $out;
 }
@@ -18,7 +15,7 @@ function hacked_reports_hacked_details($project) {
  * @ingroup themeable
  */
 function theme_hacked_detailed_report($project) {
-    foreach ($project['hacked_results'] as $file => $status) {
+    foreach ($project['files'] as $file => $status) {
       switch ($status) {
         case HACKED_STATUS_UNHACKED:
           $class = 'ok';
@@ -66,8 +63,8 @@ function theme_hacked_detailed_report($project) {
       $row .= "</div>\n";
 
       $row .= '<div class="project">';
-      if (user_access('view diffs of changed files') && module_exists('diff') && ($status != HACKED_STATUS_UNHACKED) && !hacked_file_is_binary(hacked_find_local_project_directory($project) . '/' . $file)) {
-        $row .= l($file, 'admin/reports/hacked/' . $project['short_name'] . '/diff/' . $file);
+      if (user_access('view diffs of changed files') && module_exists('diff') && ($status != HACKED_STATUS_UNHACKED) && !empty($project['diffable'][$file])) {
+        $row .= l($file, 'admin/reports/hacked/' . $project['name'] . '/diff/' . $file);
       }
       else {
         $row .= check_plain($file);

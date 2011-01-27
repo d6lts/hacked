@@ -10,6 +10,11 @@
 function theme_hacked_report($data) {
   $output = '';
 
+  $last = variable_get('hacked_last_report', 0);
+  $output = '<div class="update checked">'. ($last ? t('Last checked: @time ago', array('@time' => format_interval(time() - $last))) : t('Last checked: never'));
+  $output .= ' <span class="check-manually">('. l(t('Check manually'), 'admin/reports/hacked/rebuild-report') .')</span>';
+  $output .= "</div>\n";
+
   if (!is_array($data)) {
     $output .= '<p>' . $data . '</p>';
     return $output;
@@ -19,11 +24,11 @@ function theme_hacked_report($data) {
   $rows = array();
 
   foreach ($data as $project) {
-    if (!isset($project['hacked_status'])) {
+    if (!isset($project['status'])) {
       continue;
     }
 
-    switch ($project['hacked_status']) {
+    switch ($project['status']) {
       case HACKED_STATUS_UNHACKED:
         $class = 'ok';
         $icon = theme('image', 'misc/watchdog-ok.png', t('Unchanged'), t('Unchanged'));
@@ -40,7 +45,7 @@ function theme_hacked_report($data) {
     }
 
     $row = '<div class="version-status">';
-    switch ($project['hacked_status']) {
+    switch ($project['status']) {
       case HACKED_STATUS_UNHACKED:
         $row .= t('Unchanged');
         break;
@@ -88,7 +93,7 @@ function theme_hacked_report($data) {
     $row .= '</table>';
     $row .= '<table class="version version-latest">';
     $row .= '<tr>';
-    $row .= '<td class="version-title">'. l(t('View details of changes'), 'admin/reports/hacked/' . $project['short_name']) ."</td>\n";
+    $row .= '<td class="version-title">'. l(t('View details of changes'), 'admin/reports/hacked/' . $project['name']) ."</td>\n";
     $row .= '</tr>';
 
     $row .= '</table>';

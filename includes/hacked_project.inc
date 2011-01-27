@@ -36,8 +36,15 @@ class hackedProject {
    */
   function hackedProject($name) {
     $this->name = $name;
-
     $this->remote_files_downloader = new hackedProjectWebFilesDownloader($this);
+  }
+
+  /**
+   * Get the Human readable title of this project.
+   */
+  function title() {
+    $this->identify_project();
+    return $this->project_info['title'];
   }
 
   /**
@@ -54,10 +61,10 @@ class hackedProject {
     }
 
     // Fetch the required data from the update (status) module.
-    $available = update_get_available();
+    $available = update_get_available(TRUE);
     $data = update_calculate_project_data($available);
     foreach ($data as $key => $project) {
-      if ($project['short_name'] == $this->name) {
+      if ($key == $this->name) {
         $this->project_info = $project;
 
         // Add in the additional info that update module strips out.
@@ -192,10 +199,10 @@ class hackedProject {
     $this->hash_local_project();
 
     $results = array(
-      'same' => '',
-      'different' => '',
-      'missing' => '',
-      'access_denied' => '',
+      'same' => array(),
+      'different' => array(),
+      'missing' => array(),
+      'access_denied' => array(),
     );
 
     // Now compare the two file groups.
@@ -204,7 +211,7 @@ class hackedProject {
         $results['same'][] = $file;
       }
       elseif (!$this->local_files->is_readable($file)) {
-        $results['access_denied'] = $file;
+        $results['access_denied'][] = $file;
       }
       elseif (is_null($this->local_files->files_hashes[$file])) {
         $results['missing'][] = $file;
@@ -253,13 +260,63 @@ class hackedProject {
     elseif ($report['counts']['different'] > 0) {
       $report['status'] = HACKED_STATUS_HACKED;
     }
-    elseif ($report['counts']['different'] > 0) {
+    elseif ($report['counts']['same'] > 0) {
       $report['status'] = HACKED_STATUS_UNHACKED;
     }
 
     return $report;
 
   }
+
+    /**
+   * Return a nice detailed report.
+   */
+  function compute_details() {
+    // Ensure we know the differences.
+    $report = $this->compute_report();
+
+    $report['files'] = array();
+
+    // Add extra details about every file.
+    $states = array(
+      'access_denied' => HACKED_STATUS_PERMISSION_DENIED,
+      'missing' => HACKED_STATUS_DELETED,
+      'different' => HACKED_STATUS_HACKED,
+      'same' => HACKED_STATUS_UNHACKED,
+    );
+
+    foreach ($states as $state => $status) {
+      foreach ($this->result[$state] as $file) {
+        $report['files'][$file] = $status;
+        $report['diffable'][$file] = $this->file_is_diffable($file);
+      }
+    }
+
+
+    return $report;
+
+  }
+
+
+  function file_is_diffable($file) {
+    $this->hash_remote_project();
+    $this->hash_local_project();
+    return $this->remote_files->is_not_binary($file) && $this->local_files->is_not_binary($file);
+  }
+
+  function file_get_location($storage = 'local', $file) {
+    switch ($storage) {
+      case 'remote':
+        $this->download_remote_project();
+        return $this->remote_files->file_get_location($file);
+      case 'local':
+        $this->locate_local_project();
+        return $this->local_files->file_get_location($file);
+    }
+    return FALSE;
+  }
+
+
 
 }
 
@@ -414,32 +471,55 @@ class hackedProjectWebCVSDownloader extends hackedProjectWebDownloader {
   function download_link() {
     $info = array();
     $pinfo = &$this->project->project_info;
+    // Special handling for core.
     if ($pinfo['project_type'] == 'core') {
       $info['cvsroot'] = ':pserver:anonymous:anonymous@cvs.drupal.org:/cvs/drupal';
       $info['module'] = 'drupal';
       $info['checkout_folder'] = $pinfo['name'] . '-' . $pinfo['info']['version'];
-      $info['tag'] = '';
-      $file = new stdClass();
-      $file->filename = $this->base_filename;
-      _hacked_cvs_deploy_version_alter($info['tag'], $file);
-      if (empty($info['tag'])) {
-        $info['tag'] = 'HEAD';
-      }
+      $info['tag'] = $this->cvs_deploy_get_tag($this->base_filename);
     }
     else {
       $info['cvsroot'] = ':pserver:anonymous:anonymous@cvs.drupal.org:/cvs/drupal-contrib';
       $info['module'] = 'contributions/' . $pinfo['project_type'] . 's/' . $pinfo['name'];
       $info['checkout_folder'] = $pinfo['name'];
-      $info['tag'] = '';
-      $file = new stdClass();
-      $file->filename = $this->base_filename;
-      _hacked_cvs_deploy_version_alter($info['tag'], $file);
-      if (empty($info['tag'])) {
-        $info['tag'] = 'HEAD';
-      }
+      $info['tag'] = $this->cvs_deploy_get_tag($this->base_filename);
     }
 
     return $info;
+  }
+
+  /**
+   * Get the CVS tag associated with the given file.
+   */
+  function cvs_deploy_get_tag($file) {
+    $version = '';
+    static $available = array();
+    $match = array();
+    if (empty($version)) {
+      // The .info file contains no version data. Find the version based
+      // on the sticky tag in the local workspace (the CVS/Tag file).
+      $cvs_dir = dirname($file) .'/CVS';
+      if (is_dir($cvs_dir)) {
+        $tag = '';  // If there's no Tag file, there's no tag, a.k.a. HEAD.
+        if (file_exists($cvs_dir .'/Tag')) {
+          $tag_file = trim(file_get_contents($cvs_dir .'/Tag'));
+          if ($tag_file) {
+            // Get the sticky tag for this workspace: strip off the leading 'T'.
+            $tag = preg_replace('@^(T|N)@', '', $tag_file);
+          }
+        }
+        $version = $tag;
+      }
+    }
+    // The weird concatenation prevents CVS from 'expanding' this $Name.
+    elseif (preg_match('/\$'.'Name: (.*?)\$/', $version, $match)) {
+      $version = trim($match[1]);
+    }
+    if (empty($version)) {
+      $version = 'HEAD';
+    }
+
+    return $version;
   }
 
   function download() {
@@ -448,11 +528,17 @@ class hackedProjectWebCVSDownloader extends hackedProjectWebDownloader {
 
     // TODO: Only delete if not a TAG.
     if (file_exists($dir)) {
-      $this->remove_dir($dir);
+      if ($this->is_cvs_tag($release_info['tag'])) {
+        return $dir;
+      }
+      else {
+        // This is not a CVS tag, so we need to re-download.
+        $this->remove_dir($dir);
+      }
     }
 
-    if (hacked_cvs_checkout($release_info['cvsroot'], $release_info['module'], $dir, $release_info['checkout_folder'],$release_info['tag'])) {
-      return TRUE;
+    if (hacked_cvs_checkout($release_info['cvsroot'], $release_info['module'], $dir, $release_info['checkout_folder'], $release_info['tag'])) {
+      return $dir;
     }
 
     // Something went wrong:
@@ -474,6 +560,12 @@ class hackedProjectWebCVSDownloader extends hackedProjectWebDownloader {
       return FALSE;
     }
     return file_create_path(file_directory_temp() . "/hacked-cvs-cache/$type/$name/$version");
+  }
+
+  function is_cvs_tag($tag) {
+    // CVS tags in Drupal are of the form:
+    $valid_tags = '@^DRUPAL-[567]--(\d+)-(\d+)(-[A-Z0-9]+)?@';
+    return (bool)preg_match($valid_tags, $tag);
   }
 }
 
@@ -543,6 +635,17 @@ class hackedFileGroup {
    */
   function is_readable($file) {
     return is_readable($this->base_path . '/' . $file);
+  }
+
+  /**
+   * Determine if the given file is binary.
+   */
+  function is_not_binary($file) {
+    return is_readable($this->base_path . '/' . $file) && !hacked_file_is_binary($this->base_path . '/' . $file);
+  }
+
+  function file_get_location($file) {
+    return $this->base_path . '/' . $file;
   }
 
 }
