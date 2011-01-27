@@ -661,8 +661,40 @@ class hackedFileHasher {
    */
   function hash($filename) {
     if (file_exists($filename)) {
-      return sha1_file($filename);
+      if ($hash = $this->cache_get($filename)) {
+        return $hash;
+      }
+      else {
+        $hash = $this->perform_hash($filename);
+        $this->cache_set($filename, $hash);
+        return $hash;
+      }
     }
+  }
+
+  function cache_set($filename, $hash) {
+    cache_set($this->cache_key($filename), $hash, HACKED_CACHE_TABLE, strtotime('+7 days'));
+  }
+
+  function cache_get($filename) {
+    $cache = cache_get($this->cache_key($filename), HACKED_CACHE_TABLE);
+    if ($cache->data) {
+      return $data;
+    }
+  }
+
+  function perform_hash($filename) {
+    return '';
+  }
+
+
+
+  function cache_key($filename) {
+    $key = array(
+      'filename' => $filename,
+      'mtime' => filemtime($filename),
+    );
+    return sha1(serialize($key));
   }
 }
 
@@ -672,17 +704,14 @@ class hackedFileIgnoreEndingsHasher extends hackedFileHasher {
    *
    * Ignores file line endings.
    */
-  function hash($filename) {
-    if (file_exists($filename)) {
-      if (!hacked_file_is_binary($filename)) {
-        $file = file($filename, FILE_IGNORE_NEW_LINES);
-        return sha1(serialize($file));
-      }
-      else {
-        return parent::hash($filename);
-      }
+  function perform_hash($filename) {
+    if (!hacked_file_is_binary($filename)) {
+      $file = file($filename, FILE_IGNORE_NEW_LINES);
+      return sha1(serialize($file));
     }
-
+    else {
+      return sha1_file($filename);
+    }
   }
 }
 
@@ -690,5 +719,7 @@ class hackedFileIgnoreEndingsHasher extends hackedFileHasher {
  * This is a much faster, but potentially less useful file hasher.
  */
 class hackedFileIncludeEndingsHasher extends hackedFileHasher {
-
+  function perform_hash($filename) {
+    return sha1_file($filename);
+  }
 }

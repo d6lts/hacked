@@ -53,7 +53,7 @@ function hacked_build_report_batch_finished($success, $results, $operations) {
     // Sort the results.
     usort($results['report'], '_hacked_project_report_sort_by_status');
     // Store them.
-    cache_set('hacked:full-report', $results['report'], 'cache', strtotime('+1 day'));
+    cache_set('hacked:full-report', $results['report'], HACKED_CACHE_TABLE, strtotime('+1 day'));
     variable_set('hacked_last_report', time());
   }
 }

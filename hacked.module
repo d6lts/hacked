@@ -148,7 +148,7 @@ function hacked_perm() {
 function hacked_calculate_project_data($projects, $force = FALSE, $redirect = NULL) {
 
   // Try to get the report form cache if we can.
-  $cache = cache_get('hacked:full-report');
+  $cache = cache_get('hacked:full-report', HACKED_CACHE_TABLE);
   if (!empty($cache->data) && !$force) {
     return $cache->data;
   }
