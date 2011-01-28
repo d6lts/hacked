@@ -38,6 +38,10 @@ function hacked_drush_command() {
   $items['hacked-list-projects'] = array(
     'description' => "List all projects that can be analysed by Hacked! ",
     'drupal dependencies' => array('hacked'),
+    'options' => array(
+      '--force-rebuild' => 'Rebuild the Hacked! report instead of getting a cached version.'
+    ),
+    'aliases' => array('hlp'),
   );
 
   $items['hacked-lock-modified'] = array(
@@ -51,6 +55,7 @@ function hacked_drush_command() {
     'arguments' => array(
       'project' => 'The machine name of the project to report on.',
     ),
+    'aliases' => array('hd'),
   );
 
   $items['hacked-diff'] = array(
@@ -237,6 +242,29 @@ function hacked_drush_help_alter(&$command) {
 }
 
 /**
+ * Validate hook for the hacked_details drush command.
+ */
+function drush_hacked_details_validate($short_name = '') {
+  return drush_hacked_drush_command_validate($short_name);
+}
+
+/**
+ * Validate hook for the hacked drush commands that need a project.
+ */
+function drush_hacked_drush_command_validate($short_name = '') {
+  if (empty($short_name)) {
+    return drush_set_error('HACKED_PROJECT_NOT_FOUND', dt('A valid project must be specified', array('@project' => $short_name)));
+  }
+
+  $project = hacked_project_load($short_name);
+  $project->identify_project();
+  if (!$project->project_identified) {
+    return drush_set_error('HACKED_PROJECT_NOT_FOUND', dt('Could not find project: @project', array('@project' => $short_name)));
+  }
+  $project = NULL;
+}
+
+/**
  * Drush command callback that shows the list of changes/unchanged files in a project.
  *
  * You may specify the --include-unchanged option to show unchanged files too,
@@ -244,9 +272,6 @@ function hacked_drush_help_alter(&$command) {
  */
 function drush_hacked_details($short_name) {
   $project = hacked_project_load($short_name);
-  if (!$project) {
-    return drush_set_error('HACKED_PROJECT_NOT_FOUND', dt('Could not find project: !project', array('!project' => $short_name)));
-  }
   $report = $project->compute_details();
 
   drush_print(dt('Details for project: @name', array('@name' => $project->title())));
@@ -301,6 +326,13 @@ function drush_hacked_details($short_name) {
 }
 
 /**
+ * Validate hook for the hacked_diff drush command.
+ */
+function drush_hacked_diff_validate($short_name = '') {
+  return drush_hacked_drush_command_validate($short_name);
+}
+
+/**
  * Drush command callback that shows the list of changes/unchanged files in a project.
  *
  * You may specify the --include-unchanged option to show unchanged files too,
@@ -308,9 +340,7 @@ function drush_hacked_details($short_name) {
  */
 function drush_hacked_diff($short_name) {
   $project = hacked_project_load($short_name);
-  if (!$project) {
-    return drush_set_error('HACKED_PROJECT_NOT_FOUND', dt('Could not find project: !project', array('!project' => $short_name)));
-  }
+
   $local_location = $project->file_get_location('local', '');
   $clean_location = $project->file_get_location('remote', '');
   drush_shell_exec("diff -upr $clean_location $local_location");
