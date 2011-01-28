@@ -143,7 +143,8 @@ function drush_hacked_list_projects() {
     $projects = hacked_calculate_project_data_drush($data, $force_rebuild);
     // Now print the data using drush:
     $rows[] = array(
-      dt('Project'),
+      dt('Title'),
+      dt('Name'),
       dt('Version'),
       dt('Status'),
       dt('Changed'),
@@ -152,6 +153,7 @@ function drush_hacked_list_projects() {
     foreach ($projects as $project) {
       $row = array(
         $project['title'],
+        $project['name'],
         $project['existing_version']
       );
 
