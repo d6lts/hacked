@@ -65,6 +65,63 @@ function hacked_drush_command() {
 }
 
 /**
+ * Compute the report data for hacked.
+ *
+ * WARNING: This function can invoke a batch process and end your current page.
+ * So you'll want to be very careful if you call this!
+ */
+function hacked_calculate_project_data_drush($projects, $force = FALSE, $redirect = NULL) {
+  include_once './includes/batch.inc';
+
+  // Try to get the report form cache if we can.
+  $cache = cache_get('hacked:drush:full-report', HACKED_CACHE_TABLE);
+  if (!empty($cache->data) && !$force) {
+    return $cache->data;
+  }
+
+  // Enter a batch to build the report.
+  $operations = array();
+  foreach ($projects as $project) {
+    $operations[] = array(
+      'hacked_build_report_batch',
+      array($project['short_name']),
+    );
+  }
+
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'hacked_build_report_batch_finished_drush',
+    'file' => drupal_get_path('module', 'hacked') . '/hacked.report.inc',
+    'title' => t('Building report'),
+  );
+
+  drush_print('Rebuilding Hacked! report');
+  batch_set($batch);
+  $batch =& batch_get();
+  $batch['progressive'] = FALSE;
+  drush_backend_batch_process();
+  drush_print('Done.');
+
+  // Now we can get the data from the cache.
+  $cache = cache_get('hacked:drush:full-report', HACKED_CACHE_TABLE);
+  if (!empty($cache->data)) {
+    return $cache->data;
+  }
+}
+
+/**
+ * Completion callback for the report batch.
+ */
+function hacked_build_report_batch_finished_drush($success, $results, $operations) {
+  if ($success) {
+    // Sort the results.
+    usort($results['report'], '_hacked_project_report_sort_by_status');
+    // Store them.
+    cache_set('hacked:drush:full-report', $results['report'], HACKED_CACHE_TABLE, strtotime('+1 day'));
+  }
+}
+
+/**
  * Drush command callback that shows the listing of changed/unchanged projects.
  */
 function drush_hacked_list_projects() {
@@ -74,7 +131,8 @@ function drush_hacked_list_projects() {
   if ($available = update_get_available(TRUE)) {
     module_load_include('inc', 'update', 'update.compare');
     $data = update_calculate_project_data($available);
-    $data = hacked_calculate_project_data($data);
+    $force_rebuild = drush_get_option('force-rebuild', FALSE);
+    $projects = hacked_calculate_project_data_drush($data, $force_rebuild);
     // Now print the data using drush:
     $rows[] = array(
       dt('Project'),
@@ -83,14 +141,14 @@ function drush_hacked_list_projects() {
       dt('Changed'),
       dt('Deleted'),
     );
-    foreach ($data as $project) {
+    foreach ($projects as $project) {
       $row = array(
         $project['title'],
         $project['existing_version']
       );
 
       // Now add the status:
-      switch ($project['hacked_status']) {
+      switch ($project['status']) {
         case HACKED_STATUS_UNHACKED:
           $row[] = dt('Unchanged');
           break;
@@ -103,8 +161,8 @@ function drush_hacked_list_projects() {
           break;
       }
 
-      $row[] = $project['changed_count'];
-      $row[] = $project['deleted_count'];
+      $row[] = $project['counts']['different'];
+      $row[] = $project['counts']['missing'];
 
 
       $rows[] = $row;
@@ -126,9 +184,9 @@ function drush_hacked_lock_modified() {
   if (isset($drupal_root) && ($available = update_get_available(TRUE))) {
     module_load_include('inc', 'update', 'update.compare');
     $data = update_calculate_project_data($available);
-    $data = hacked_calculate_project_data($data);
+    $projects = hacked_calculate_project_data_drush($data, TRUE);
 
-    foreach ($data as $project) {
+    foreach ($projects as $project) {
       $row = array(
         empty($project['title']) ? $project['name'] : $project['title'],
         $project['name'],
@@ -136,16 +194,17 @@ function drush_hacked_lock_modified() {
       );
 
       // Lock the file if it is not already locked.
-      switch ($project['hacked_status']) {
+      switch ($project['status']) {
         case HACKED_STATUS_HACKED:
-          $local_location = realpath(hacked_find_local_project_directory($project));
-          $lockfile = $local_location . '/.drush-lock-update';
+          $project_ob = NULL;
+          $project_ob = hacked_project_load($project['project_name']);
+          $lockfile = $project_ob->file_get_location('local', '.drush-lock-update');
           if (!file_exists($lockfile)) {
             drush_op('file_put_contents', $lockfile, dt("Locked: modified."));
-            drush_print(dt("Locked: !project", array('!project' => $project['name'])));
+            drush_print(dt("Locked: @project", array('@project' => $project['name'])));
           }
           else {
-            drush_print(dt("!project is modified and already locked", array('!project' => $project['name'])));
+            drush_print(dt("@project is modified and already locked", array('@project' => $project['name'])));
           }
           break;
         case HACKED_STATUS_UNHACKED:
@@ -183,31 +242,31 @@ function hacked_drush_help_alter(&$command) {
  * You may specify the --include-unchanged option to show unchanged files too,
  * otherwise just the changed and deleted files are shown.
  */
-function drush_hacked_details($short_name = '') {
+function drush_hacked_details($short_name) {
   $project = hacked_project_load($short_name);
   if (!$project) {
     return drush_set_error('HACKED_PROJECT_NOT_FOUND', dt('Could not find project: !project', array('!project' => $short_name)));
   }
+  $report = $project->compute_details();
 
-  drush_print(dt('Details for project: @name', array('@name' => $project['title'])));
+  drush_print(dt('Details for project: @name', array('@name' => $project->title())));
   drush_print(dt('Total files: @total_files, files changed: @changed_files, deleted files: @deleted_files', array(
-    '@total_files' => count($project['hacked_results']),
-    '@changed_files' => $project['changed_count'],
-    '@deleted_files' => $project['deleted_count'],
-
+    '@total_files' => count($report['files']),
+    '@changed_files' => $report['counts']['different'],
+    '@deleted_files' => $report['counts']['missing'],
   )));
   drush_print('');
 
   drush_print(dt('Detailed results:'));
   // Sort the results:
-  arsort($project['hacked_results']);
+  arsort($report['files']);
 
   $rows[] = array(
     dt('Status'),
     dt('File'),
   );
   $show_unchanged = drush_get_option('include-unchanged', FALSE);
-  foreach ($project['hacked_results'] as $file => $status) {
+  foreach ($report['files'] as $file => $status) {
     if (!$show_unchanged && $status == HACKED_STATUS_UNHACKED) {
       continue;
     }
@@ -247,21 +306,13 @@ function drush_hacked_details($short_name = '') {
  * You may specify the --include-unchanged option to show unchanged files too,
  * otherwise just the changed and deleted files are shown.
  */
-function drush_hacked_diff($short_name = '') {
+function drush_hacked_diff($short_name) {
   $project = hacked_project_load($short_name);
   if (!$project) {
     return drush_set_error('HACKED_PROJECT_NOT_FOUND', dt('Could not find project: !project', array('!project' => $short_name)));
   }
-  $local_location = realpath(hacked_find_local_project_directory($project));
-  $clean_location = hacked_download_release($this_release['download_link'], $project['project_type'], $project['short_name'], $project['existing_version']);
-  // More special handling for core:
-  if ($project['type'] != 'core') {
-    $clean_location = $clean_location . "/${project['short_name']}";
-  }
-  else {
-    $clean_location = $clean_location . "/${project['short_name']}-${project['version']}";
-  }
-  $clean_location = realpath($clean_location);
+  $local_location = $project->file_get_location('local', '');
+  $clean_location = $project->file_get_location('remote', '');
   drush_shell_exec("diff -upr $clean_location $local_location");
 
   $lines = drush_shell_exec_output();
@@ -275,8 +326,8 @@ function drush_hacked_diff($short_name = '') {
       $line = str_replace($clean_location_trim, '', $line);
     }
     if (strpos($line, 'diff -upr') === 0) {
-      $line = str_replace($clean_location_trim, 'old/', $line);
-      $line = str_replace($local_location_trim, 'new/', $line);
+      $line = str_replace($clean_location_trim, 'a/', $line);
+      $line = str_replace($local_location_trim, 'b/', $line);
     }
 
     drush_print($line);

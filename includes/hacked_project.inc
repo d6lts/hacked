@@ -210,11 +210,11 @@ class hackedProject {
       if ($this->remote_files->files_hashes[$file] == $this->local_files->files_hashes[$file]) {
         $results['same'][] = $file;
       }
+      elseif (!$this->local_files->file_exists($file)) {
+        $results['missing'][] = $file;
+      }
       elseif (!$this->local_files->is_readable($file)) {
         $results['access_denied'][] = $file;
-      }
-      elseif (is_null($this->local_files->files_hashes[$file])) {
-        $results['missing'][] = $file;
       }
       else {
         $results['different'][] = $file;
@@ -234,6 +234,7 @@ class hackedProject {
     // Do some counting
 
     $report = array(
+      'project_name' => $this->name,
       'status' => HACKED_STATUS_UNCHECKED,
       'counts' => array(
         'same' => count($this->result['same']),
@@ -268,7 +269,7 @@ class hackedProject {
 
   }
 
-    /**
+  /**
    * Return a nice detailed report.
    */
   function compute_details() {
@@ -310,7 +311,7 @@ class hackedProject {
         $this->download_remote_project();
         return $this->remote_files->file_get_location($file);
       case 'local':
-        $this->locate_local_project();
+        $this->hash_local_project();
         return $this->local_files->file_get_location($file);
     }
     return FALSE;
@@ -635,6 +636,13 @@ class hackedFileGroup {
    */
   function is_readable($file) {
     return is_readable($this->base_path . '/' . $file);
+  }
+
+  /**
+   * Determine if a file exists.
+   */
+  function file_exists($file) {
+    return file_exists($this->base_path . '/' . $file);
   }
 
   /**
