@@ -151,15 +151,15 @@ class hackedProject {
       $include_type = 'module';
     }
 
+    //$include = 'image_captcha';
+
     $path = drupal_get_path($include_type, $include);
 
     // Now we need to find the path of the info file in the downloaded package:
-    // TODO: Can replace this with using the info file stuff we put there earlier:
     $temp = '';
     foreach ($this->remote_files->files as $file) {
-      if (strpos($file, "$include.info") !== FALSE) {
-        // TODO: Replace this with a regular expression
-        $temp = str_replace("$include.info", '', $file);
+      if (preg_match('@(^|.*/)' . $include . '.info$@', $file)) {
+        $temp = $file;
         break;
       }
     }
@@ -167,8 +167,6 @@ class hackedProject {
     // How many '/' were in that path:
     $slash_count = substr_count($temp, '/');
     $back_track = str_repeat('/..', $slash_count);
-
-
 
     return realpath($path . $back_track);
   }
