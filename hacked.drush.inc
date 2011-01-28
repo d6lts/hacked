@@ -55,6 +55,9 @@ function hacked_drush_command() {
     'arguments' => array(
       'project' => 'The machine name of the project to report on.',
     ),
+    'options' => array(
+      '--include-unchanged' => 'Show the files that are unchanged too.',
+    ),
     'aliases' => array('hd'),
   );
 
