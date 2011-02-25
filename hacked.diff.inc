@@ -1,6 +1,5 @@
 <?php
 
-// $Id$
 
 function hacked_reports_hacked_diff($project, $file) {
 

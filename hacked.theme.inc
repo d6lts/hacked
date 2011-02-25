@@ -1,6 +1,5 @@
 <?php
 
-// $Id$
 
 /**
  * Theme project status report.

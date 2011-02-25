@@ -1,6 +1,5 @@
 <?php
 
-// $Id$
 
 function hacked_reports_hacked_details($project) {
   // Send the results to the theme function:
