@@ -50,7 +50,7 @@ function hacked_menu() {
   );
 
   if (module_exists('diff')) {
-    $items['admin/reports/hacked/%hacked_project/diff/%hacked_tail'] = array(
+    $items['admin/reports/hacked/%hacked_project/diff/%menu_tail'] = array(
       'title callback' => 'hacked_reports_hacked_diff_title',
       'title arguments' => array(3, 5),
       'load arguments'   => array('%map', '%index'),
@@ -66,16 +66,6 @@ function hacked_menu() {
 }
 
 /**
- * Helper to load the menu tail properly.
- *
- * Specifed as %hacked_tail in a menu path, this will return the entirety
- * of the the rest of the menu path.
- */
-function hacked_tail_load($arg, $map, $index) {
-  return implode('/', array_slice($map, $index));
-}
-
-/**
  * Menu loader for loading a project from its short name.
  *
  * In this function we call the calculate function both the update module and
@@ -88,7 +78,6 @@ function hacked_tail_load($arg, $map, $index) {
  *   Should the project be downloaded to the local cache.
  */
 function hacked_project_load($short_name) {
-  module_load_include('inc', 'hacked', 'includes/hacked_project');
   return new hackedProject($short_name);
 }
 
@@ -123,7 +112,7 @@ function hacked_theme() {
       'file' => 'hacked.theme.inc',
     ),
     'hacked_detailed_report' => array(
-      'arguments' => array('data' => NULL),
+      'arguments' => array('project' => NULL),
       'file' => 'hacked.details.inc',
     ),
   );
@@ -157,7 +146,7 @@ function hacked_calculate_project_data($projects, $force = FALSE, $redirect = NU
   foreach ($projects as $project) {
     $operations[] = array(
       'hacked_build_report_batch',
-      array($project['short_name']),
+      array($project['name']),
     );
   }
 

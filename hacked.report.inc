@@ -10,10 +10,10 @@ function hacked_reports_hacked() {
   if ($available = update_get_available(TRUE)) {
     module_load_include('inc', 'update', 'update.compare');
     $data = update_calculate_project_data($available);
-    return theme('hacked_report', hacked_calculate_project_data($data));
+    return theme('hacked_report', array('data' => hacked_calculate_project_data($data)));
   }
   else {
-    return theme('update_report', _update_no_data());
+    return theme('update_report', array('data' => _update_no_data()));
   }
 }
 

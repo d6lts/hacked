@@ -342,11 +342,11 @@ class hackedProjectWebDownloader {
 
     $dir = file_directory_temp() . "/hacked-cache/$type/$name";
     // Build the destination folder tree if it doesn't already exists.
-    if (!file_check_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
+    if (!file_prepare_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
       watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
       return FALSE;
     }
-    return file_create_path(file_directory_temp() . "/hacked-cache/$type/$name/$version");
+    return file_directory_temp() . "/hacked-cache/$type/$name/$version";
   }
 
   /**
@@ -433,16 +433,16 @@ class hackedProjectWebFilesDownloader extends hackedProjectWebDownloader {
     if ($request->code == 200) {
 
       // Build the destination folder tree if it doesn't already exists.
-      if (!file_check_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
+      if (!file_prepare_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
         watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
         return FALSE;
       }
 
       // Save the tarball someplace:
-      $project_path = file_create_path($dir . '/' . basename($release_url));
+      $project_path = $dir . '/' . basename($release_url);
       file_save_data($request->data, $project_path);
       shell_exec("cd $dir; tar -zxf ". basename($project_path));
-      file_delete($project_path);
+      file_unmanaged_delete($project_path);
       return TRUE;
     }
 

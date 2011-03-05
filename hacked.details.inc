@@ -3,7 +3,7 @@
 
 function hacked_reports_hacked_details($project) {
   // Send the results to the theme function:
-  $out = theme('hacked_detailed_report', $project->compute_details());
+  $out = theme('hacked_detailed_report', array('project' => $project->compute_details()));
 
   return $out;
 }
@@ -13,7 +13,9 @@ function hacked_reports_hacked_details($project) {
  *
  * @ingroup themeable
  */
-function theme_hacked_detailed_report($project) {
+function theme_hacked_detailed_report($variables) {
+  $project = $variables['project'];
+  $rows = array();
     foreach ($project['files'] as $file => $status) {
       switch ($status) {
         case HACKED_STATUS_UNHACKED:
@@ -78,5 +80,5 @@ function theme_hacked_detailed_report($project) {
       );
     }
     drupal_add_css(drupal_get_path('module', 'update') . '/update.css');
-    return theme('table', NULL, $rows, array('class' => 'update'));
+    return theme('table', array('row' => $rows, 'attributes' => array('class' => 'update')));
 }

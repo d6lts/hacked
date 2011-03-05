@@ -6,7 +6,8 @@
  *
  * @ingroup themeable
  */
-function theme_hacked_report($data) {
+function theme_hacked_report($variables) {
+  $data = $variables['data'];
   $output = '';
 
   $last = variable_get('hacked_last_report', 0);
@@ -21,6 +22,7 @@ function theme_hacked_report($data) {
 
   $header = array();
   $rows = array();
+  
 
   foreach ($data as $project) {
     if (!isset($project['status'])) {
@@ -30,16 +32,16 @@ function theme_hacked_report($data) {
     switch ($project['status']) {
       case HACKED_STATUS_UNHACKED:
         $class = 'ok';
-        $icon = theme('image', 'misc/watchdog-ok.png', t('Unchanged'), t('Unchanged'));
+        $icon = theme('image', array('path' => 'misc/watchdog-ok.png', 'alt' => t('Unchanged'), 'title' => t('Unchanged')));
         break;
       case HACKED_STATUS_HACKED:
         $class = 'error';
-        $icon = theme('image', 'misc/watchdog-error.png', t('Changed'), t('Changed'));
+        $icon = theme('image', array('path' => 'misc/watchdog-error.png', 'alt' => t('Changed'), 'title' => t('Changed')));
         break;
       case HACKED_STATUS_UNCHECKED:
       default:
         $class = 'warning';
-        $icon = theme('image', 'misc/watchdog-warning.png', t('Unchecked'), t('Unchecked'));
+        $icon = theme('image', array('path' => 'misc/watchdog-warning.png', 'alt' => t('Unchecked'), 'title' => t('Unchecked')));
         break;
     }
 
@@ -109,7 +111,7 @@ function theme_hacked_report($data) {
       $rows[$project['project_type']] = array();
     }
     $rows[$project['project_type']][] = array(
-      'class' => $class,
+      'class' => array($class),
       'data' => array($row),
     );
   }
@@ -124,7 +126,7 @@ function theme_hacked_report($data) {
   foreach ($project_types as $type_name => $type_label) {
     if (!empty($rows[$type_name])) {
       $output .= "\n<h3>" . $type_label . "</h3>\n";
-      $output .= theme('table', $header, $rows[$type_name], array('class' => 'update'));
+      $output .= theme('table', array('header' => $header, 'rows' => $rows[$type_name], 'attributes' => array('class' => array('update'))));
     }
   }
   drupal_add_css(drupal_get_path('module', 'update') . '/update.css');
