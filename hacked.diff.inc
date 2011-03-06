@@ -37,7 +37,10 @@ function hacked_diff_changed($project, $file) {
   $installed_array = file_exists($installed_file) ? file($installed_file) : array();
 
   $diff = new Diff($original_array, $installed_array);
-  $output = theme('diff_table', array(t('Orignal'), '', t('Current'), ''), $formatter->format($diff), array('class' => 'diff hacked-diff'));
+  $output = theme('diff_table', array(
+                  'header' => array(t('Orignal'), '', t('Current'), ''),
+                  'rows' => $formatter->format($diff),
+                  'attributes' => array('class' => 'diff hacked-diff')));
   return $output;
 
 }
