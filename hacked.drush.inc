@@ -91,7 +91,7 @@ function hacked_calculate_project_data_drush($projects, $force = FALSE, $redirec
   foreach ($projects as $project) {
     $operations[] = array(
       'hacked_build_report_batch',
-      array($project['short_name']),
+      array($project['name']),
     );
   }
 
