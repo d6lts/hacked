@@ -330,6 +330,29 @@ class hackedProjectWebDownloader {
   function hackedProjectWebDownloader(&$project) {
     $this->project = $project;
   }
+  
+  /**
+   * Returns a temp directory to work in.
+   *
+   * @param $namespace
+   *   The optional namespace of the temp directory, defaults to the classname.
+   */
+  function get_temp_directory($namespace = NULL) {
+    if (is_null($namespace)) {
+      $namespace = get_class($this);
+    }
+    $segments = array(
+      file_directory_temp(),
+      'hacked-cache-' . get_current_user(),
+      $namespace,
+    );
+    $dir = implode('/', array_filter($segments));
+    if (!file_prepare_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
+      watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
+      return FALSE;
+    }
+    return $dir;
+  }
 
   /**
    * Returns a directory to save the downloaded project into.
@@ -339,13 +362,13 @@ class hackedProjectWebDownloader {
     $name = $this->project->name;
     $version = $this->project->existing_version;
 
-    $dir = file_directory_temp() . "/hacked-cache/$type/$name";
+    $dir = $this->get_temp_directory() .  "/$type/$name";
     // Build the destination folder tree if it doesn't already exists.
     if (!file_prepare_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
       watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
       return FALSE;
     }
-    return file_directory_temp() . "/hacked-cache/$type/$name/$version";
+    return "$dir/$version";
   }
 
   /**
@@ -555,13 +578,13 @@ class hackedProjectWebCVSDownloader extends hackedProjectWebDownloader {
     $version = $this->project->existing_version . '-' . $info['tag'];
 
 
-    $dir = file_directory_temp() . "/hacked-cvs-cache/$type/$name";
+    $dir = $this->get_temp_directory() . "/$type/$name";
     // Build the destination folder tree if it doesn't already exists.
     if (!file_check_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
       watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
       return FALSE;
     }
-    return file_create_path(file_directory_temp() . "/hacked-cvs-cache/$type/$name/$version");
+    return "$dir/$version";
   }
 
   function is_cvs_tag($tag) {
