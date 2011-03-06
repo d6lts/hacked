@@ -291,7 +291,6 @@ class hackedProject {
       }
     }
 
-
     return $report;
 
   }
@@ -412,13 +411,17 @@ class hackedProjectWebDownloader {
 class hackedProjectWebFilesDownloader extends hackedProjectWebDownloader {
 
   function download_link() {
-    $this_release = $this->project->project_info['releases'][$this->project->existing_version];
-    return $this_release['download_link'];
+    if (!empty($this->project->project_info['releases'][$this->project->existing_version])) {
+      $this_release = $this->project->project_info['releases'][$this->project->existing_version];
+      return $this_release['download_link'];
+    }
   }
 
   function download() {
     $dir = $this->get_destination();
-    $release_url = $this->download_link();
+    if (!($release_url = $this->download_link())) {
+      return FALSE;
+    }
 
     // If our directory already exists, we can just return the path to this cached version
     if (file_exists($dir)) {
@@ -440,7 +443,7 @@ class hackedProjectWebFilesDownloader extends hackedProjectWebDownloader {
 
       // Save the tarball someplace:
       $project_path = $dir . '/' . basename($release_url);
-      file_save_data($request->data, $project_path);
+      file_unmanaged_save_data($request->data, $project_path);
       shell_exec("cd $dir; tar -zxf ". basename($project_path));
       file_unmanaged_delete($project_path);
       return TRUE;
@@ -684,8 +687,8 @@ class hackedFileHasher {
 
   function cache_get($filename) {
     $cache = cache_get($this->cache_key($filename), HACKED_CACHE_TABLE);
-    if ($cache->data) {
-      return $data;
+    if (!empty($cache->data)) {
+      return $cache->data;
     }
   }
 

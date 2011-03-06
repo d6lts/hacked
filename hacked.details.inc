@@ -15,29 +15,29 @@ function hacked_reports_hacked_details($project) {
  */
 function theme_hacked_detailed_report($variables) {
   $project = $variables['project'];
-  $rows = array();
+  $rows = array();  
     foreach ($project['files'] as $file => $status) {
       switch ($status) {
         case HACKED_STATUS_UNHACKED:
           $class = 'ok';
-          $icon = theme('image', 'misc/watchdog-ok.png', t('Unchanged'), t('Unchanged'));
+          $icon = theme('image', array('path' => 'misc/watchdog-ok.png', 'alt' => t('Unchanged'), 'title' => t('Unchanged')));
           break;
         case HACKED_STATUS_DELETED:
           $class = 'error';
-          $icon = theme('image', 'misc/watchdog-error.png', t('Changed'), t('Changed'));
+          $icon = theme('image', array('path' => 'misc/watchdog-error.png', 'alt' => t('Changed'), 'title' => t('Changed')));
           break;
         case HACKED_STATUS_HACKED:
           $class = 'warning';
-          $icon = theme('image', 'misc/watchdog-warning.png', t('Deleted'), t('Deleted'));
+          $icon = theme('image', array('path' => 'misc/watchdog-warning.png', 'alt' => t('Deleted'), 'title' => t('Deleted')));
           break;
         case HACKED_STATUS_PERMISSION_DENIED:
           $class = 'warning';
-          $icon = theme('image', 'misc/watchdog-warning.png', t('Permission Denied'), t('Permission Denied'));
+          $icon = theme('image', array('path' => 'misc/watchdog-warning.png', 'alt' => t('Permission Denied'), 'title' => t('Permission Denied')));
           break;
         case HACKED_STATUS_UNCHECKED:
         default:
           $class = 'warning';
-          $icon = theme('image', 'misc/watchdog-warning.png', t('Unchecked'), t('Unchecked'));
+          $icon = theme('image', array('path' => 'misc/watchdog-warning.png', 'alt' => t('Unchecked'), 'title' => t('Unchecked')));
           break;
       }
 
@@ -75,10 +75,10 @@ function theme_hacked_detailed_report($variables) {
       $row .= "</div>\n";
 
       $rows[] = array(
-        'class' => $class,
+        'class' => array($class),
         'data' => array($row),
       );
     }
     drupal_add_css(drupal_get_path('module', 'update') . '/update.css');
-    return theme('table', array('row' => $rows, 'attributes' => array('class' => 'update')));
+    return theme('table', array('rows' => $rows, 'attributes' => array('class' => 'update')));
 }
