@@ -73,7 +73,7 @@ class hackedProject {
         // http://drupal.org/node/669554
 
         // Find an item that this project includes:
-        if (module_exists('cvs_deploy')) {
+        if (hacked_cvs_enabled()) {
           foreach ($project['includes'] as $name => $title) {
             if (is_dir(drupal_get_path($project['project_type'], $name) . '/CVS')) {
               $this->remote_files_downloader = new hackedProjectWebCVSDownloader($this, drupal_get_filename($project['project_type'], $name));
@@ -580,7 +580,7 @@ class hackedProjectWebCVSDownloader extends hackedProjectWebDownloader {
 
     $dir = $this->get_temp_directory() . "/$type/$name";
     // Build the destination folder tree if it doesn't already exists.
-    if (!file_check_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
+    if (!file_prepare_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
       watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
       return FALSE;
     }

@@ -265,6 +265,17 @@ function hacked_cvs_executable_get_version() {
 }
 
 /**
+ * Will return TRUE if the CVS functions should be enabled.
+ */
+function hacked_cvs_enabled() {
+  $cvs_enabled = &drupal_static(__FUNCTION__);
+  if (is_null($cvs_enabled)) {
+    $cvs_enabled = module_exists('cvs_deploy') && (bool)hacked_cvs_executable_get_version();
+  }
+  return $cvs_enabled;
+}
+
+/**
  * Helper function to return the command to run cvs on the command line.
  */
 function hacked_cvs_get_command() {
@@ -289,8 +300,8 @@ function hacked_cvs_get_command() {
 function hacked_cvs_checkout($cvsroot, $folder, $checkout_location, $checkout_folder, $tag = 'HEAD') {
   $cvs_cmd = hacked_cvs_get_command();
   $t = $checkout_location . '/' . $checkout_folder;
-  file_check_directory($checkout_location, FILE_CREATE_DIRECTORY);
-  file_check_directory($t, FILE_CREATE_DIRECTORY);
+  file_prepare_directory($checkout_location, FILE_CREATE_DIRECTORY);
+  file_prepare_directory($t, FILE_CREATE_DIRECTORY);
 
   exec("cd $checkout_location; $cvs_cmd -z6 -d$cvsroot -q checkout -d $checkout_folder -r $tag $folder", $output_lines, $return_value);
 
