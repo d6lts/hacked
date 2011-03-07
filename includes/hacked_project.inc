@@ -61,11 +61,16 @@ class hackedProject {
     }
 
     // Fetch the required data from the update (status) module.
+    // TODO: clean this up.
     $available = update_get_available(TRUE);
     $data = update_calculate_project_data($available);
+    $releases = _update_get_cached_available_releases();
     foreach ($data as $key => $project) {
       if ($key == $this->name) {
         $this->project_info = $project;
+        if (isset($releases[$key]['releases'])) {
+          $this->project_info['releases'] += $releases[$key]['releases'];
+        }
 
         // Add in the additional info that update module strips out.
         // This is a really naff way of doing this, but update (status) module
@@ -88,8 +93,6 @@ class hackedProject {
         break;
       }
     }
-
-
   }
 
   /**
