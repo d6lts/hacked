@@ -187,6 +187,9 @@ function _hacked_project_report_sort_by_status($a, $b) {
 
 /**
  * Determine if a file is a binary file.
+ *
+ * Taken from: http://www.ultrashock.com/forums/server-side/checking-if-a-file-is-binary-98391.html
+ * and then tweaked in: http://drupal.org/node/760362.
  */
 function hacked_file_is_binary($file) {
   if (file_exists($file)) {
@@ -199,7 +202,8 @@ function hacked_file_is_binary($file) {
     clearstatcache();
 
     return (
-      0 or substr_count($blk, "^ -~", "^\r\n")/512 > 0.3
+      0 or substr_count($blk, "^\r\n") / 512 > 0.3
+        or substr_count($blk, "^ -~") / 512 > 0.3
         or substr_count($blk, "\x00") > 0
     );
   }
