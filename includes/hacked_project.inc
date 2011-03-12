@@ -68,7 +68,10 @@ class hackedProject {
     foreach ($data as $key => $project) {
       if ($key == $this->name) {
         $this->project_info = $project;
-        if (isset($releases[$key]['releases'])) {
+        if (!is_array($this->project_info['releases'])) {
+          $this->project_info['releases'] = array();
+        }
+        if (isset($releases[$key]['releases']) && is_array($releases[$key]['releases'])) {
           $this->project_info['releases'] += $releases[$key]['releases'];
         }
 
@@ -333,7 +336,7 @@ class hackedProjectWebDownloader {
   function hackedProjectWebDownloader(&$project) {
     $this->project = $project;
   }
-  
+
   /**
    * Returns a temp directory to work in.
    *
