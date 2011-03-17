@@ -65,10 +65,11 @@ class hackedProject {
     $available = update_get_available(TRUE);
     $data = update_calculate_project_data($available);
     $releases = _update_get_cached_available_releases();
+    
     foreach ($data as $key => $project) {
       if ($key == $this->name) {
         $this->project_info = $project;
-        if (!is_array($this->project_info['releases'])) {
+        if (!isset($this->project_info['releases']) || !is_array($this->project_info['releases'])) {
           $this->project_info['releases'] = array();
         }
         if (isset($releases[$key]['releases']) && is_array($releases[$key]['releases'])) {
