@@ -66,6 +66,9 @@ function hacked_drush_command() {
     'arguments' => array(
       'project' => 'The machine name of the project to report on.',
     ),
+    'options' => array(
+      '--diff-options' => 'Command line options to pass through to the diff command.'
+    ),
   );
 
   return $items;
@@ -347,7 +350,17 @@ function drush_hacked_diff($short_name) {
 
   $local_location = $project->file_get_location('local', '');
   $clean_location = $project->file_get_location('remote', '');
-  drush_shell_exec("diff -upr $clean_location $local_location");
+
+  // If the hasher is our ignore line endings one, then ignore line endings.
+  if (variable_get('hacked_selected_file_hasher', HACKED_DEFAULT_FILE_HASHER) == 'hacked_ignore_line_endings') {
+    $default_options = '-uprb';
+  }
+  else {
+    $default_options = '-upr';
+  }
+
+  $diff_options = drush_get_option('diff-options', $default_options);
+  drush_shell_exec("diff $diff_options $clean_location $local_location");
 
   $lines = drush_shell_exec_output();
   $local_location_trim = dirname($local_location . '/dummy.file') . '/';
