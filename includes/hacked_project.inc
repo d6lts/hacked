@@ -63,6 +63,7 @@ class hackedProject {
     // Fetch the required data from the update (status) module.
     $available = update_get_available(TRUE);
     $data = update_calculate_project_data($available);
+
     foreach ($data as $key => $project) {
       if ($key == $this->name) {
         $this->project_info = $project;
@@ -331,7 +332,7 @@ class hackedProjectWebDownloader {
   function hackedProjectWebDownloader(&$project) {
     $this->project = $project;
   }
-  
+
   /**
    * Returns a temp directory to work in.
    *
@@ -608,8 +609,7 @@ class hackedFileGroup {
    */
   function hackedFileGroup($base_path) {
     $this->base_path = $base_path;
-    // TODO: allow configuration of this:
-    $this->hasher = new hackedFileIncludeEndingsHasher();
+    $this->hasher = hacked_get_file_hasher();
   }
 
   /**
@@ -722,6 +722,7 @@ class hackedFileHasher {
     $key = array(
       'filename' => $filename,
       'mtime' => filemtime($filename),
+      'class_name' => get_class($this),
     );
     return sha1(serialize($key));
   }

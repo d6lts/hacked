@@ -17,6 +17,8 @@ define('HACKED_STATUS_HACKED', 3);
 define('HACKED_STATUS_DELETED', 4);
 define('HACKED_STATUS_UNHACKED', 5);
 
+define('HACKED_DEFAULT_FILE_HASHER', 'hacked_ignore_line_endings');
+
 /**
  * Implementation of hook_menu().
  */
@@ -30,6 +32,20 @@ function hacked_menu() {
     'access arguments' => array('administer site configuration'),
     'weight' => 10,
     'file' => 'hacked.report.inc',
+  );
+
+  $items['admin/reports/hacked/settings'] = array(
+    'title' => 'Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('hacked_settings_form'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'hacked.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['admin/reports/hacked/list'] = array(
+    'title' => 'List projects',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
   );
 
   $items['admin/reports/hacked/rebuild-report'] = array(
@@ -311,4 +327,49 @@ function hacked_cvs_checkout($cvsroot, $folder, $checkout_location, $checkout_fo
   }
 
   return FALSE;
+}
+
+/**
+ * Return the file hasher that is currently selected by the user.
+ */
+function hacked_get_file_hasher($name = NULL) {
+  if (is_null($name)) {
+    $name = variable_get('hacked_selected_file_hasher', HACKED_DEFAULT_FILE_HASHER);
+  }
+  $hashers = hacked_get_file_hashers();
+  $class_name = $hashers[$name]['class'];
+  return new $class_name;
+}
+
+/**
+ * Gets all the file hashers defined.
+ */
+function hacked_get_file_hashers() {
+  $hashers = &drupal_static(__FUNCTION__);
+  if (is_null($hashers)) {
+    $hashers = module_invoke_all('hacked_file_hashers_info');
+    drupal_alter('hacked_file_hashers_info', $hashers);
+  }
+  return $hashers;
+}
+
+/**
+ * Implements hook_hacked_file_hashers_info().
+ */
+function hacked_hacked_file_hashers_info() {
+  $hashers = array();
+
+  $hashers['hacked_ignore_line_endings'] = array(
+    'class' => 'hackedFileIgnoreEndingsHasher',
+    'name' => t('Ignore line endings'),
+    'description' => t('When hashing files differences in line endings will be ignored. This might be useful if projects have been edited on a different platform than of the original author\'s. E.g. if a file has been opened and saved on Windows.'),
+  );
+
+  $hashers['hacked_include_line_endings'] = array(
+    'class' => 'hackedFileIncludeEndingsHasher',
+    'name' => t('Include line endings'),
+    'description' => t('When hashing files differences in line endings will be included.'),
+  );
+
+  return $hashers;
 }
