@@ -65,7 +65,7 @@ class hackedProject {
     $available = update_get_available(TRUE);
     $data = update_calculate_project_data($available);
     $releases = _update_get_cached_available_releases();
-    
+
     foreach ($data as $key => $project) {
       if ($key == $this->name) {
         $this->project_info = $project;
@@ -618,8 +618,7 @@ class hackedFileGroup {
    */
   function hackedFileGroup($base_path) {
     $this->base_path = $base_path;
-    // TODO: allow configuration of this:
-    $this->hasher = new hackedFileIncludeEndingsHasher();
+    $this->hasher = hacked_get_file_hasher();
   }
 
   /**
@@ -732,6 +731,7 @@ class hackedFileHasher {
     $key = array(
       'filename' => $filename,
       'mtime' => filemtime($filename),
+      'class_name' => get_class($this),
     );
     return sha1(serialize($key));
   }
