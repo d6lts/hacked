@@ -636,7 +636,7 @@ class hackedFileGroup {
    * Locate all sensible files at the base path of the file group.
    */
   function scan_base_path() {
-    $files = hacked_file_scan_directory($this->base_path, '.*', array('.', '..', 'CVS', '.svn', '.git'));
+    $files = hacked_file_scan_directory($this->base_path, '/.*/', array('.', '..', 'CVS', '.svn', '.git'));
     foreach ($files as $file) {
       $filename = str_replace($this->base_path . '/', '', $file->filename);
       $this->files[] = $filename;
