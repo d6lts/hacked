@@ -345,7 +345,7 @@ function hacked_get_file_hasher($name = NULL) {
  * Gets all the file hashers defined.
  */
 function hacked_get_file_hashers() {
-  $hashers = &drupal_static(__FUNCTION__);
+  static $hashers;
   if (is_null($hashers)) {
     $hashers = module_invoke_all('hacked_file_hashers_info');
     drupal_alter('hacked_file_hashers_info', $hashers);
