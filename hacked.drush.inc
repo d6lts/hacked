@@ -117,6 +117,8 @@ function hacked_calculate_project_data_drush($projects, $force = FALSE, $redirec
   if (!empty($cache->data)) {
     return $cache->data;
   }
+
+  return array();
 }
 
 /**
