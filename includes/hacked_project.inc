@@ -349,7 +349,7 @@ class hackedProjectWebDownloader {
       $namespace,
     );
     $dir = file_create_path(implode('/', array_filter($segments)));
-    if (!file_prepare_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
+    if (!file_check_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
       watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
       return FALSE;
     }
