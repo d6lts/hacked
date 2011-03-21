@@ -97,6 +97,11 @@ class hackedProject {
         break;
       }
     }
+
+    // Logging.
+    if (!$this->project_identified) {
+      watchdog('hacked', 'Could not identify project: @name', array('@name' => $this->name), WATCHDOG_WARNING);
+    }
   }
 
   /**
@@ -109,10 +114,12 @@ class hackedProject {
     }
 
     $this->identify_project();
-    $this->remote_files_downloader->download();
+    $this->remote_downloaded = (bool)$this->remote_files_downloader->download();
 
-    $this->remote_downloaded = TRUE;
-
+    // Logging.
+    if (!$this->remote_downloaded) {
+      watchdog('hacked', 'Could not download project: @title', array('@title' => $this->title()), WATCHDOG_ERROR);
+    }
   }
 
   /**
@@ -132,7 +139,12 @@ class hackedProject {
     $this->remote_files = hackedFileGroup::fromDirectory($base_path);
     $this->remote_files->compute_hashes();
 
-    $this->remote_hashed = TRUE;
+    $this->remote_hashed = !empty($this->remote_files->files);
+
+    // Logging.
+    if (!$this->remote_hashed) {
+      watchdog('hacked', 'Could not hash remote project: @title', array('@title' => $this->title()), WATCHDOG_ERROR);
+    }
   }
 
   /**
@@ -192,7 +204,12 @@ class hackedProject {
     $this->local_files = hackedFileGroup::fromList($location, $this->remote_files->files);
     $this->local_files->compute_hashes();
 
-    $this->local_hashed = TRUE;
+    $this->local_hashed = !empty($this->local_files->files);
+
+    // Logging.
+    if (!$this->local_hashed) {
+      watchdog('hacked', 'Could not hash local project: @title', array('@title' => $this->title()), WATCHDOG_ERROR);
+    }
   }
 
   /**
