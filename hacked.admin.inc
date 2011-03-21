@@ -32,7 +32,7 @@ function hacked_settings_form() {
       '#return_value' => $name,
       '#parents' => $parents,
       '#description' => !empty($hasher_info['description']) ? $hasher_info['description'] : '',
-      '#id' => drupal_html_id('edit-' . implode('-', $parents_for_id)),
+      '#id' => form_clean_id('edit-' . implode('-', $parents_for_id)),
     );
   }
 
