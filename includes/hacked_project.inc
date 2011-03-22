@@ -44,7 +44,7 @@ class hackedProject {
    */
   function title() {
     $this->identify_project();
-    return $this->project_info['title'];
+    return isset($this->project_info['title']) ? $this->project_info['title'] : $this->name;
   }
 
   /**
@@ -264,15 +264,25 @@ class hackedProject {
         'missing' => count($this->result['missing']),
         'access_denied' => count($this->result['access_denied']),
       ),
-      'title' => $this->project_info['title'],
-      'link' => $this->project_info['link'],
-      'name' => $this->project_info['name'],
-      'existing_version' => $this->project_info['existing_version'],
-      'install_type' => $this->project_info['install_type'],
-      'datestamp' => $this->project_info['datestamp'],
-      'project_type' => $this->project_info['project_type'],
-      'includes' => $this->project_info['includes'],
+      'title' => $this->title(),
     );
+
+    // Add more details into the report result (if we can).
+    $details = array(
+      'link',
+      'name',
+      'existing_version',
+      'install_type',
+      'datestamp',
+      'project_type',
+      'includes',
+    );
+    foreach ($details as $item) {
+      if (isset($this->project_info[$item])) {
+        $report[$item] = $this->project_info[$item];
+      }
+    }
+
 
     if ($report['counts']['access_denied'] > 0) {
       $report['status'] = HACKED_STATUS_PERMISSION_DENIED;
