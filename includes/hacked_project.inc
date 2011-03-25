@@ -348,7 +348,7 @@ class hackedProjectWebDownloader {
       'hacked-cache-' . get_current_user(),
       $namespace,
     );
-    $dir = file_create_path(implode('/', array_filter($segments)));
+    $dir = implode('/', array_filter($segments));
     if (!file_check_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
       watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
       return FALSE;
@@ -364,7 +364,7 @@ class hackedProjectWebDownloader {
     $name = $this->project->name;
     $version = $this->project->existing_version;
 
-    $dir = file_create_path($this->get_temp_directory() .  "/$type/$name");
+    $dir = $this->get_temp_directory() .  "/$type/$name";
     // Build the destination folder tree if it doesn't already exists.
     if (!file_check_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
       watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
@@ -576,7 +576,7 @@ class hackedProjectWebCVSDownloader extends hackedProjectWebDownloader {
     $version = $this->project->existing_version . '-' . $info['tag'];
 
 
-    $dir = file_create_path($this->get_temp_directory() . "/$type/$name");
+    $dir = $this->get_temp_directory() . "/$type/$name";
     // Build the destination folder tree if it doesn't already exists.
     if (!file_check_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
       watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
