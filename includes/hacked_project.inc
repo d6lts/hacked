@@ -707,8 +707,8 @@ class hackedFileHasher {
 
   function cache_get($filename) {
     $cache = cache_get($this->cache_key($filename), HACKED_CACHE_TABLE);
-    if ($cache->data) {
-      return $data;
+    if (!empty($cache->data)) {
+      return $cache->data;
     }
   }
 
