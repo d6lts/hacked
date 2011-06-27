@@ -181,9 +181,8 @@ function drush_hacked_list_projects() {
     }
     drush_print_table($rows, TRUE);
 
+    return $projects;
   }
-
-
 }
 
 /**
