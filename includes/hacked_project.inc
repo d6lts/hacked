@@ -575,6 +575,8 @@ class hackedProjectWebFilesDownloader extends hackedProjectWebDownloader {
 
 /**
  * Downloads a project using CVS.
+ *
+ * @deprecated
  */
 class hackedProjectWebCVSDownloader extends hackedProjectWebDownloader {
 

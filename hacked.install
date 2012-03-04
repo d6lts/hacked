@@ -1,26 +1,8 @@
 <?php
-
-
 /**
- * Implementation of hook_requirements().
+ * @file
+ * Install functions for the Hacked! module.
  */
-function hacked_requirements($phase) {
-  $requirements = array();
-
-  $t = get_t();
-
-  if ($phase == 'runtime') {
-    $version = hacked_cvs_executable_get_version();
-
-    $requirements['hacked_cvs'] = array(
-      'title' => $t('Hacked'),
-      'severity' => ($version) ? REQUIREMENT_OK : REQUIREMENT_WARNING,
-      'value' => ($version) ? $t('CVS executable found: %cvs_version', array('%cvs_version' => $version)) : $t("Could not find the 'cvs' executable. Checking CVS projects will not work correctly."),
-    );
-  }
-
-  return $requirements;
-}
 
 /**
  * Implementation of hook_schema().
