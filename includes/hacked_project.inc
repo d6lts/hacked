@@ -143,7 +143,8 @@ class hackedProject {
 
     // If this project is drupal it, we need to handle it specially
     if ($this->project_type != 'core') {
-      $include = array_shift(array_keys($this->project_info['includes']));
+      $includes = array_keys($this->project_info['includes']);
+      $include = array_shift($includes);
       $include_type = $this->project_info['project_type'];
     }
     else {
