@@ -4,5 +4,5 @@ package = Development
 core = 7.x
 ;dependencies[] = diff
 dependencies[] = update
-
 files[] = includes/hacked_project.inc
+configure = admin/reports/hacked/settings
