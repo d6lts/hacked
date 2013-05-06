@@ -26,21 +26,11 @@ function hacked_reports_hacked_diff($project, $file) {
 }
 
 function hacked_diff_changed($project, $file) {
-  // Load up the two files and diff them:
-  module_load_include('php', 'diff', 'DiffEngine');
-  $formatter = new DrupalDiffFormatter();
-
   $original_file = $project->file_get_location('remote', $file);
   $installed_file = $project->file_get_location('local', $file);
 
-  $original_array = file_exists($original_file) ? file($original_file) : array();
-  $installed_array = file_exists($installed_file) ? file($installed_file) : array();
-
-  $diff = new Diff($original_array, $installed_array);
-  $output = theme('diff_table', array(
+  $output = theme('table', array(
                   'header' => array(t('Orignal'), '', t('Current'), ''),
-                  'rows' => $formatter->format($diff),
-                  'attributes' => array('class' => 'diff hacked-diff')));
+                  'rows' => diff_get_rows(file_get_contents($original_file), file_get_contents($installed_file), TRUE)));
   return $output;
-
 }
