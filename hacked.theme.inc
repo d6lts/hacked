@@ -100,10 +100,12 @@ function theme_hacked_report($variables) {
     $row .= '</table>';
     $row .= "</div>\n";
 
-    $row .= '<div class="includes">';
-    sort($project['includes']);
-    $row .= t('Includes: %includes', array('%includes' => implode(', ', $project['includes'])));
-    $row .= "</div>\n";
+    if (isset($project['includes']) && is_array($project['includes'])) {
+      $row .= '<div class="includes">';
+      sort($project['includes']);
+      $row .= t('Includes: %includes', array('%includes' => implode(', ', $project['includes'])));
+      $row .= "</div>\n";
+    }
 
     $row .= "</div>\n"; // info div.
 
