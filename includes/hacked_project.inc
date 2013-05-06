@@ -214,7 +214,7 @@ class hackedProject {
   }
 
   /**
-   * Compute the differences between our version and the cannoical version of the project.
+   * Compute the differences between our version and the canonical version of the project.
    */
   function compute_differences() {
     // Make sure we've hashed both remote and local files.
