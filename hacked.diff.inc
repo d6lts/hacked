@@ -30,7 +30,7 @@ function hacked_diff_changed($project, $file) {
   $installed_file = $project->file_get_location('local', $file);
 
   $output = theme('table', array(
-                  'header' => array(t('Orignal'), '', t('Current'), ''),
+                  'header' => array(t('Original'), '', t('Current'), ''),
                   'rows' => diff_get_rows(file_get_contents($original_file), file_get_contents($installed_file), TRUE)));
   return $output;
 }
