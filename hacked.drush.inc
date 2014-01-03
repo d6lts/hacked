@@ -55,7 +55,7 @@ function hacked_drush_command() {
       'project' => 'The machine name of the project to report on.',
     ),
     'options' => array(
-      '--include-unchanged' => 'Show the files that are unchanged too.',
+      'include-unchanged' => 'Show the files that are unchanged too.',
     ),
     'aliases' => array('hd'),
   );
@@ -67,7 +67,7 @@ function hacked_drush_command() {
       'project' => 'The machine name of the project to report on.',
     ),
     'options' => array(
-      '--diff-options' => 'Command line options to pass through to the diff command.'
+      'diff-options' => 'Command line options to pass through to the diff command.'
     ),
   );
 
