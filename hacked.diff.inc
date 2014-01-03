@@ -1,6 +1,19 @@
 <?php
 
 
+/**
+ * Shows a diff report for a specific file in a project.
+ *
+ * @param $project
+ *   The hackedProject instance.
+ * @param $file
+ *   The file to diff within the project.
+ *
+ * @return
+ *   If the user is allowed to view the diff report, then a HTML diff report,
+ *   otherwise a HTML error string.
+ *
+ */
 function hacked_reports_hacked_diff($project, $file) {
 
   if (!module_exists('diff')) {
@@ -25,6 +38,17 @@ function hacked_reports_hacked_diff($project, $file) {
   return t('Cannot hash binary file or file not found: %file', array('%file' => $file));
 }
 
+/**
+ * Generate a diff report for a specific file in a project.
+ *
+ * @param $project
+ *   The hackedProject instance.
+ * @param $file
+ *   The file to diff within the project.
+ *
+ * @return
+ *   A HTML diff report.
+ */
 function hacked_diff_changed($project, $file) {
   $original_file = $project->file_get_location('remote', $file);
   $installed_file = $project->file_get_location('local', $file);
