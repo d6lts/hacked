@@ -38,7 +38,7 @@ function hacked_drush_command() {
     'description' => "List all projects that can be analysed by Hacked! ",
     'drupal dependencies' => array('hacked'),
     'options' => array(
-      '--force-rebuild' => 'Rebuild the Hacked! report instead of getting a cached version.'
+      'force-rebuild' => 'Rebuild the Hacked! report instead of getting a cached version.'
     ),
     'aliases' => array('hlp'),
   );
