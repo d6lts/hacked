@@ -53,8 +53,10 @@ function hacked_diff_changed($project, $file) {
   $original_file = $project->file_get_location('remote', $file);
   $installed_file = $project->file_get_location('local', $file);
 
+  $hasher = hacked_get_file_hasher();
+
   $output = theme('table', array(
                   'header' => array(t('Original'), '', t('Current'), ''),
-                  'rows' => diff_get_rows(file_get_contents($original_file), file_get_contents($installed_file), TRUE)));
+                  'rows' => diff_get_rows($hasher->fetch_lines($original_file), $hasher->fetch_lines($installed_file), TRUE)));
   return $output;
 }

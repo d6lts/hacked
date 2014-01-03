@@ -782,7 +782,7 @@ class hackedFileGroup {
 /**
  * Base class for the different ways that files can be hashed.
  */
-class hackedFileHasher {
+abstract class hackedFileHasher {
   /**
    * Returns a hash of the given filename.
    *
@@ -812,12 +812,6 @@ class hackedFileHasher {
     }
   }
 
-  function perform_hash($filename) {
-    return '';
-  }
-
-
-
   function cache_key($filename) {
     $key = array(
       'filename' => $filename,
@@ -826,6 +820,28 @@ class hackedFileHasher {
     );
     return sha1(serialize($key));
   }
+
+  /**
+   * Compute and return the hash of the given file.
+   *
+   * @param $filename
+   *   A fully-qualified filename to hash.
+   *
+   * @return string
+   *   The computed hash of the given file.
+   */
+  abstract function perform_hash($filename);
+
+  /**
+   * Compute and return the lines of the given file.
+   *
+   * @param $filename
+   *   A fully-qualified filename to return.
+   *
+   * @return array|bool
+   *   The lines of the given filename or FALSE on failure.
+   */
+  abstract function fetch_lines($filename);
 }
 
 class hackedFileIgnoreEndingsHasher extends hackedFileHasher {
@@ -843,6 +859,10 @@ class hackedFileIgnoreEndingsHasher extends hackedFileHasher {
       return sha1_file($filename);
     }
   }
+
+  function fetch_lines($filename) {
+    return file($filename, FILE_IGNORE_NEW_LINES);
+  }
 }
 
 /**
@@ -852,4 +872,10 @@ class hackedFileIncludeEndingsHasher extends hackedFileHasher {
   function perform_hash($filename) {
     return sha1_file($filename);
   }
+
+  function fetch_lines($filename) {
+    return file($filename);
+  }
+
+
 }
