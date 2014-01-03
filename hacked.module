@@ -244,7 +244,7 @@ function hacked_file_scan_directory($dir, $mask, $nomask = array('.', '..', 'CVS
           $files[$$key]->filename = $filename;
           $files[$$key]->basename = $basename;
           $files[$$key]->name = $name;
-          if ($callback) {
+          if (is_callable($callback)) {
             $callback($filename);
           }
         }
@@ -264,7 +264,7 @@ function hacked_cvs_executable_get_version() {
   $cvs_cmd = hacked_cvs_get_command();
   // Run exec looking for the command:
   $output_lines = array();
-  $return_value;
+  $return_value = 1;
   exec("$cvs_cmd --version", $output_lines, $return_value);
   if ($return_value === 0) {
     // We executed correctly, go looking for the version line:
