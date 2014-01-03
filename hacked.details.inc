@@ -14,50 +14,52 @@ function hacked_reports_hacked_details($project) {
  * @ingroup themeable
  */
 function theme_hacked_detailed_report($variables) {
+  // Have a context for translation.
+  $translation_context = array('context' => 'Hacked');
   $project = $variables['project'];
-  $rows = array();  
+  $rows = array();
     foreach ($project['files'] as $file => $status) {
       switch ($status) {
         case HACKED_STATUS_UNHACKED:
           $class = 'ok';
-          $icon = theme('image', array('path' => 'misc/watchdog-ok.png', 'alt' => t('Unchanged'), 'title' => t('Unchanged')));
+          $icon = theme('image', array('path' => 'misc/watchdog-ok.png', 'alt' => t('Unchanged', array(), $translation_context), 'title' => t('Unchanged', array(), $translation_context)));
           break;
         case HACKED_STATUS_DELETED:
           $class = 'error';
-          $icon = theme('image', array('path' => 'misc/watchdog-error.png', 'alt' => t('Changed'), 'title' => t('Changed')));
+          $icon = theme('image', array('path' => 'misc/watchdog-error.png', 'alt' => t('Changed', array(), $translation_context), 'title' => t('Changed', array(), $translation_context)));
           break;
         case HACKED_STATUS_HACKED:
           $class = 'warning';
-          $icon = theme('image', array('path' => 'misc/watchdog-warning.png', 'alt' => t('Deleted'), 'title' => t('Deleted')));
+          $icon = theme('image', array('path' => 'misc/watchdog-warning.png', 'alt' => t('Deleted', array(), $translation_context), 'title' => t('Deleted', array(), $translation_context)));
           break;
         case HACKED_STATUS_PERMISSION_DENIED:
           $class = 'warning';
-          $icon = theme('image', array('path' => 'misc/watchdog-warning.png', 'alt' => t('Permission Denied'), 'title' => t('Permission Denied')));
+          $icon = theme('image', array('path' => 'misc/watchdog-warning.png', 'alt' => t('Permission Denied', array(), $translation_context), 'title' => t('Permission Denied', array(), $translation_context)));
           break;
         case HACKED_STATUS_UNCHECKED:
         default:
           $class = 'warning';
-          $icon = theme('image', array('path' => 'misc/watchdog-warning.png', 'alt' => t('Unchecked'), 'title' => t('Unchecked')));
+          $icon = theme('image', array('path' => 'misc/watchdog-warning.png', 'alt' => t('Unchecked', array(), $translation_context), 'title' => t('Unchecked', array(), $translation_context)));
           break;
       }
 
       $row = '<div class="version-status">';
       switch ($status) {
         case HACKED_STATUS_UNHACKED:
-          $row .= t('Unchanged');
+          $row .= t('Unchanged', array(), $translation_context);
           break;
         case HACKED_STATUS_HACKED:
-          $row .= '<span class="not-current">' . t('Changed!') . '</span>';
+          $row .= '<span class="not-current">' . t('Changed!', array(), $translation_context) . '</span>';
           break;
         case HACKED_STATUS_DELETED:
-          $row .= '<span class="">' . t('Deleted') . '</span>';
+          $row .= '<span class="">' . t('Deleted', array(), $translation_context) . '</span>';
           break;
         case HACKED_STATUS_PERMISSION_DENIED:
-          $row .= '<span class="">' . t('Permission Denied') . '</span>';
+          $row .= '<span class="">' . t('Permission Denied', array(), $translation_context) . '</span>';
           break;
         case HACKED_STATUS_UNCHECKED:
         default:
-          $row .= '<span class="">' . t('Unchecked') . '</span>';
+          $row .= '<span class="">' . t('Unchecked', array(), $translation_context) . '</span>';
           break;
       }
       $row .= '<span class="icon">' . $icon . '</span>';

@@ -7,6 +7,8 @@
  * @ingroup themeable
  */
 function theme_hacked_report($variables) {
+  // Have a context for translation.
+  $translation_context = array('context' => 'Hacked');
   $data = $variables['data'];
   $output = '';
 
@@ -22,7 +24,7 @@ function theme_hacked_report($variables) {
 
   $header = array();
   $rows = array();
-  
+
 
   foreach ($data as $project) {
     if (!isset($project['status'])) {
@@ -32,30 +34,30 @@ function theme_hacked_report($variables) {
     switch ($project['status']) {
       case HACKED_STATUS_UNHACKED:
         $class = 'ok';
-        $icon = theme('image', array('path' => 'misc/watchdog-ok.png', 'alt' => t('Unchanged'), 'title' => t('Unchanged')));
+        $icon = theme('image', array('path' => 'misc/watchdog-ok.png', 'alt' => t('Unchanged', array(), $translation_context), 'title' => t('Unchanged', array(), $translation_context)));
         break;
       case HACKED_STATUS_HACKED:
         $class = 'error';
-        $icon = theme('image', array('path' => 'misc/watchdog-error.png', 'alt' => t('Changed'), 'title' => t('Changed')));
+        $icon = theme('image', array('path' => 'misc/watchdog-error.png', 'alt' => t('Changed', array(), $translation_context), 'title' => t('Changed', array(), $translation_context)));
         break;
       case HACKED_STATUS_UNCHECKED:
       default:
         $class = 'warning';
-        $icon = theme('image', array('path' => 'misc/watchdog-warning.png', 'alt' => t('Unchecked'), 'title' => t('Unchecked')));
+        $icon = theme('image', array('path' => 'misc/watchdog-warning.png', 'alt' => t('Unchecked', array(), $translation_context), 'title' => t('Unchecked', array(), $translation_context)));
         break;
     }
 
     $row = '<div class="version-status">';
     switch ($project['status']) {
       case HACKED_STATUS_UNHACKED:
-        $row .= t('Unchanged');
+        $row .= t('Unchanged', array(), $translation_context);
         break;
       case HACKED_STATUS_HACKED:
-        $row .= '<span class="not-current">' . t('Changed!') . '</span>';
+        $row .= '<span class="not-current">' . t('Changed!', array(), $translation_context) . '</span>';
         break;
       case HACKED_STATUS_UNCHECKED:
       default:
-        $row .= '<span class="">' . t('Unchecked') . '</span>';
+        $row .= '<span class="">' . t('Unchecked', array(), $translation_context) . '</span>';
         break;
     }
     $row .= '<span class="icon">' . $icon . '</span>';
