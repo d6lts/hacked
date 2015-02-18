@@ -81,7 +81,7 @@ function hacked_drush_command() {
  * So you'll want to be very careful if you call this!
  */
 function hacked_calculate_project_data_drush($projects, $force = FALSE, $redirect = NULL) {
-  include_once './includes/batch.inc';
+  include_once DRUPAL_ROOT . '/includes/batch.inc';
 
   // Try to get the report form cache if we can.
   $cache = cache_get('hacked:drush:full-report', HACKED_CACHE_TABLE);
