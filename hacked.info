@@ -4,5 +4,13 @@ package = Development
 core = 7.x
 ;dependencies[] = diff
 dependencies[] = update
-files[] = includes/hacked_project.inc
 configure = admin/reports/hacked/settings
+
+files[] = includes/hackedFileGroup.inc
+files[] = includes/hackedFileHasher.inc
+files[] = includes/hackedFileIgnoreEndingsHasher.inc
+files[] = includes/hackedFileIncludeEndingsHasher.inc
+files[] = includes/hackedProject.inc
+files[] = includes/hackedProjectWebCSVDownloader.inc
+files[] = includes/hackedProjectWebDownloader.inc
+files[] = includes/hackedProjectWebFilesDownloader.inc
