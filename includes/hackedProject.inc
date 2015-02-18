@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Ensapsulates a Hacked! project.
+ * Encapsulates a Hacked! project.
  *
  * This class should handle all the complexity for you, and so you should be able to do:
  * <code>
