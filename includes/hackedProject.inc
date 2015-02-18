@@ -18,7 +18,10 @@ class hackedProject {
 
   var $remote_files_downloader;
 
+  /* @var hackedFileGroup $remote_files */
   var $remote_files;
+
+  /* @var hackedFileGroup $local_files */
   var $local_files;
 
   var $project_type = '';
