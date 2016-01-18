@@ -1,9 +1,19 @@
 <?php
 
 /**
+ * @file
+ * Contains \Drupal\hacked\hackedFileGroup.
+ */
+
+namespace Drupal\hacked;
+
+use Drupal\Core\StringTranslation\StringTranslationTrait;
+
+/**
  * Represents a group of files on the local filesystem.
  */
 class hackedFileGroup {
+  use StringTranslationTrait;
 
   var $base_path = '';
   var $files = array();
@@ -15,7 +25,7 @@ class hackedFileGroup {
   /**
    * Constructor.
    */
-  function hackedFileGroup($base_path) {
+  function __construct($base_path) {
     $this->base_path = $base_path;
     $this->hasher = hacked_get_file_hasher();
   }

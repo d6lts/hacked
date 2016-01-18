@@ -1,6 +1,15 @@
 <?php
 
 /**
+ * @file
+ * Contains \Drupal\hacked\hackedProject.
+ */
+
+namespace Drupal\hacked;
+
+use Drupal\Core\StringTranslation\StringTranslationTrait;
+
+/**
  * Encapsulates a Hacked! project.
  *
  * This class should handle all the complexity for you, and so you should be able to do:
@@ -12,6 +21,8 @@
  * Which is quite nice I think.
  */
 class hackedProject {
+  use StringTranslationTrait;
+
   var $name = '';
 
   var $project_info = array();
@@ -37,7 +48,7 @@ class hackedProject {
   /**
    * Constructor.
    */
-  function hackedProject($name) {
+  function __construct($name) {
     $this->name = $name;
     $this->remote_files_downloader = new hackedProjectWebFilesDownloader($this);
   }
@@ -67,7 +78,8 @@ class hackedProject {
     // TODO: clean this up.
     $available = update_get_available(TRUE);
     $data = update_calculate_project_data($available);
-    $releases = _update_get_cached_available_releases();
+    $releases = \Drupal::keyValueExpirable('update_available_releases')
+      ->getAll();
 
     foreach ($data as $key => $project) {
       if ($key == $this->name) {
@@ -84,16 +96,6 @@ class hackedProject {
         // ripped out a lot of useful stuff in issue:
         // http://drupal.org/node/669554
 
-        // Find an item that this project includes:
-        if (hacked_cvs_enabled()) {
-          foreach ($project['includes'] as $name => $title) {
-            if (is_dir(drupal_get_path($project['project_type'], $name) . '/CVS')) {
-              $this->remote_files_downloader = new hackedProjectWebCVSDownloader($this, drupal_get_filename($project['project_type'], $name));
-              break;
-            }
-          }
-        }
-
         $this->project_identified = TRUE;
         $this->existing_version = $this->project_info['existing_version'];
         $this->project_type = $this->project_info['project_type'];
@@ -103,7 +105,8 @@ class hackedProject {
 
     // Logging.
     if (!$this->project_identified) {
-      watchdog('hacked', 'Could not identify project: @name', array('@name' => $this->name), WATCHDOG_WARNING);
+      $message = $this->t('Could not identify project: @name', array('@name' => $this->name));
+      \Drupal::logger('hacked')->warning($message->render());
     }
   }
 
@@ -121,7 +124,8 @@ class hackedProject {
 
     // Logging.
     if (!$this->remote_downloaded) {
-      watchdog('hacked', 'Could not download project: @title', array('@title' => $this->title()), WATCHDOG_ERROR);
+      $message = $this->t('Could not download project: @title', array('@title' => $this->title()));
+      \Drupal::logger('hacked')->error($message->render());
     }
   }
 
@@ -146,7 +150,8 @@ class hackedProject {
 
     // Logging.
     if (!$this->remote_hashed) {
-      watchdog('hacked', 'Could not hash remote project: @title', array('@title' => $this->title()), WATCHDOG_ERROR);
+      $message = $this->t('Could not hash remote project: @title', array('@title' => $this->title()));
+      \Drupal::logger('hacked')->error($message->render());
     }
   }
 
@@ -181,7 +186,7 @@ class hackedProject {
     // Now we need to find the path of the info file in the downloaded package:
     $temp = '';
     foreach ($this->remote_files->files as $file) {
-      if (preg_match('@(^|.*/)' . $include . '.info$@', $file)) {
+      if (preg_match('@(^|.*/)' . $include . '.info.yml$@', $file)) {
         $temp = $file;
         break;
       }
@@ -212,7 +217,8 @@ class hackedProject {
 
     // Logging.
     if (!$this->local_hashed) {
-      watchdog('hacked', 'Could not hash local project: @title', array('@title' => $this->title()), WATCHDOG_ERROR);
+      $message = $this->t('Could not hash local project: @title', ['@title' => $this->title()]);
+      \Drupal::logger('hacked')->error($message->render());
     }
   }
 
@@ -224,12 +230,12 @@ class hackedProject {
     $this->hash_remote_project();
     $this->hash_local_project();
 
-    $results = array(
-      'same' => array(),
-      'different' => array(),
-      'missing' => array(),
-      'access_denied' => array(),
-    );
+    $results = [
+      'same'          => [],
+      'different'     => [],
+      'missing'       => [],
+      'access_denied' => [],
+    ];
 
     // Now compare the two file groups.
     foreach ($this->remote_files->files as $file) {
@@ -259,17 +265,17 @@ class hackedProject {
 
     // Do some counting
 
-    $report = array(
+    $report = [
       'project_name' => $this->name,
-      'status' => HACKED_STATUS_UNCHECKED,
-      'counts' => array(
-        'same' => count($this->result['same']),
-        'different' => count($this->result['different']),
-        'missing' => count($this->result['missing']),
+      'status'       => HACKED_STATUS_UNCHECKED,
+      'counts'       => [
+        'same'          => count($this->result['same']),
+        'different'     => count($this->result['different']),
+        'missing'       => count($this->result['missing']),
         'access_denied' => count($this->result['access_denied']),
-      ),
-      'title' => $this->title(),
-    );
+      ],
+      'title'        => $this->title(),
+    ];
 
     // Add more details into the report result (if we can).
     $details = array(
@@ -302,7 +308,6 @@ class hackedProject {
     }
 
     return $report;
-
   }
 
   /**
@@ -317,9 +322,9 @@ class hackedProject {
     // Add extra details about every file.
     $states = array(
       'access_denied' => HACKED_STATUS_PERMISSION_DENIED,
-      'missing' => HACKED_STATUS_DELETED,
-      'different' => HACKED_STATUS_HACKED,
-      'same' => HACKED_STATUS_UNHACKED,
+      'missing'       => HACKED_STATUS_DELETED,
+      'different'     => HACKED_STATUS_HACKED,
+      'same'          => HACKED_STATUS_UNHACKED,
     );
 
     foreach ($states as $state => $status) {
@@ -330,9 +335,7 @@ class hackedProject {
     }
 
     return $report;
-
   }
-
 
   function file_is_diffable($file) {
     $this->hash_remote_project();
@@ -351,6 +354,5 @@ class hackedProject {
     }
     return FALSE;
   }
-
 
 }

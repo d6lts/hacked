@@ -1,10 +1,19 @@
 <?php
 
 /**
+ * @file
+ * Contains \Drupal\hacked\hackedProjectWebFilesDownloader.
+ */
+
+namespace Drupal\hacked;
+
+use Drupal\Component\Utility\Unicode;
+use Exception;
+
+/**
  * Downloads a project using a standard Drupal method.
  */
 class hackedProjectWebFilesDownloader extends hackedProjectWebDownloader {
-
   function download_link() {
     if (!empty($this->project->project_info['releases'][$this->project->existing_version])) {
       $this_release = $this->project->project_info['releases'][$this->project->existing_version];
@@ -19,38 +28,41 @@ class hackedProjectWebFilesDownloader extends hackedProjectWebDownloader {
     }
 
     // If our directory already exists, we can just return the path to this cached version
-    if (file_exists($dir) && count(hacked_file_scan_directory($dir, '/.*/', array(
+    if (file_exists($dir) && count(hacked_file_scan_directory($dir, '/.*/', [
         '.',
         '..',
         'CVS',
         '.svn',
         '.git'
-      )))
+      ]))
     ) {
       return $dir;
     }
 
     // Build the destination folder tree if it doesn't already exists.
     if (!file_prepare_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
-      watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
+      $message = $this->t('Failed to create temp directory: %dir', ['%dir' => $dir]);
+      \Drupal::logger('hacked')->error($message->render());
       return FALSE;
     }
 
     if (!($local_file = $this->file_get($release_url))) {
-      watchdog('hacked', 'Could not download the project: @name from URL: @url', array(
+      $message = $this->t('Could not download the project: @name from URL: @url', [
         '@name' => $this->project->title(),
-        '@url' => $release_url
-      ), WATCHDOG_ERROR);
+        '@url'  => $release_url
+      ]);
+      \Drupal::logger('hacked')->error($message->render());
       return FALSE;
     }
     try {
       $this->archive_extract($local_file, $dir);
     }
     catch (Exception $e) {
-      watchdog('hacked', 'Could not extract the project: @name. Error was: !error', array(
-        '@name' => $this->project->title(),
+      $message = $this->t('Could not extract the project: @name. Error was: !error', [
+        '@name'  => $this->project->title(),
         '!error' => $e->getMessage()
-      ), WATCHDOG_ERROR);
+      ]);
+      \Drupal::logger('hacked')->error($message->render());
       return FALSE;
     }
 
@@ -70,10 +82,10 @@ class hackedProjectWebFilesDownloader extends hackedProjectWebDownloader {
    */
   function file_get($url) {
     $parsed_url = parse_url($url);
-    $remote_schemes = array('http', 'https', 'ftp', 'ftps', 'smb', 'nfs');
+    $remote_schemes = ['http', 'https', 'ftp', 'ftps', 'smb', 'nfs'];
     if (!in_array($parsed_url['scheme'], $remote_schemes)) {
       // This is a local file, just return the path.
-      return drupal_realpath($url);
+      return \Drupal::service('file_system')->realpath($url);
     }
 
     // Check the cache and download the file if needed.
@@ -90,8 +102,6 @@ class hackedProjectWebFilesDownloader extends hackedProjectWebDownloader {
   /**
    * Unpack a downloaded archive file.
    *
-   * @param string $project
-   *   The short name of the project to download.
    * @param string $file
    *   The filename of the archive you wish to extract.
    * @param string $directory
@@ -103,7 +113,7 @@ class hackedProjectWebFilesDownloader extends hackedProjectWebDownloader {
   function archive_extract($file, $directory) {
     $archiver = archiver_get_archiver($file);
     if (!$archiver) {
-      throw new Exception(t('Cannot extract %file, not a valid archive.', array('%file' => $file)));
+      throw new Exception(t('Cannot extract %file, not a valid archive.', ['%file' => $file]));
     }
 
     // Remove the directory if it exists, otherwise it might contain a mixture of
@@ -111,7 +121,7 @@ class hackedProjectWebFilesDownloader extends hackedProjectWebDownloader {
     // from a later release).
     $files = $archiver->listContents();
     // Unfortunately, we can only use the directory name for this. :(
-    $project = drupal_substr($files[0], 0, -1);
+    $project = Unicode::substr($files[0], 0, -1);
     $extract_location = $directory . '/' . $project;
     if (file_exists($extract_location)) {
       file_unmanaged_delete_recursive($extract_location);

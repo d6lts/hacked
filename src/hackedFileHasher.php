@@ -1,6 +1,13 @@
 <?php
 
 /**
+ * @file
+ * Contains \Drupal\hacked\hackedFileHasher.
+ */
+
+namespace Drupal\hacked;
+
+/**
  * Base class for the different ways that files can be hashed.
  */
 abstract class hackedFileHasher {
@@ -23,11 +30,11 @@ abstract class hackedFileHasher {
   }
 
   function cache_set($filename, $hash) {
-    cache_set($this->cache_key($filename), $hash, HACKED_CACHE_TABLE, strtotime('+7 days'));
+    \Drupal::cache(HACKED_CACHE_TABLE)->set($this->cache_key($filename), $hash, strtotime('+7 days'));
   }
 
   function cache_get($filename) {
-    $cache = cache_get($this->cache_key($filename), HACKED_CACHE_TABLE);
+    $cache = \Drupal::cache(HACKED_CACHE_TABLE)->get($this->cache_key($filename));
     if (!empty($cache->data)) {
       return $cache->data;
     }

@@ -1,9 +1,15 @@
 <?php
+
 /**
- * Created by PhpStorm.
- * User: steven
- * Date: 18/02/15
- * Time: 19:13
+ * @file
+ * Contains \Drupal\hacked\hackedFileIgnoreEndingsHasher.
+ */
+
+namespace Drupal\hacked;
+
+/**
+ * Class hackedFileIgnoreEndingsHasher
+ * @package Drupal\hacked
  */
 class hackedFileIgnoreEndingsHasher extends hackedFileHasher {
   /**

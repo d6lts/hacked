@@ -1,86 +1,102 @@
 <?php
 
-
-function hacked_reports_hacked_details($project) {
-  // Send the results to the theme function:
-  $out = theme('hacked_detailed_report', array('project' => $project->compute_details()));
-
-  return $out;
-}
+use Drupal\Core\Template\Attribute;
+use Drupal\Core\Url;
 
 /**
  * Theme project status report.
  *
  * @ingroup themeable
  */
-function theme_hacked_detailed_report($variables) {
-  // Have a context for translation.
-  $translation_context = array('context' => 'Hacked');
+function template_preprocess_hacked_detailed_report(&$variables) {
   $project = $variables['project'];
-  $rows = array();
-    foreach ($project['files'] as $file => $status) {
-      switch ($status) {
-        case HACKED_STATUS_UNHACKED:
-          $class = 'ok';
-          $icon = theme('image', array('path' => 'misc/watchdog-ok.png', 'alt' => t('Unchanged', array(), $translation_context), 'title' => t('Unchanged', array(), $translation_context)));
-          break;
-        case HACKED_STATUS_DELETED:
-          $class = 'error';
-          $icon = theme('image', array('path' => 'misc/watchdog-error.png', 'alt' => t('Changed', array(), $translation_context), 'title' => t('Changed', array(), $translation_context)));
-          break;
-        case HACKED_STATUS_HACKED:
-          $class = 'warning';
-          $icon = theme('image', array('path' => 'misc/watchdog-warning.png', 'alt' => t('Deleted', array(), $translation_context), 'title' => t('Deleted', array(), $translation_context)));
-          break;
-        case HACKED_STATUS_PERMISSION_DENIED:
-          $class = 'warning';
-          $icon = theme('image', array('path' => 'misc/watchdog-warning.png', 'alt' => t('Permission Denied', array(), $translation_context), 'title' => t('Permission Denied', array(), $translation_context)));
-          break;
-        case HACKED_STATUS_UNCHECKED:
-        default:
-          $class = 'warning';
-          $icon = theme('image', array('path' => 'misc/watchdog-warning.png', 'alt' => t('Unchecked', array(), $translation_context), 'title' => t('Unchecked', array(), $translation_context)));
-          break;
-      }
 
-      $row = '<div class="version-status">';
-      switch ($status) {
-        case HACKED_STATUS_UNHACKED:
-          $row .= t('Unchanged', array(), $translation_context);
-          break;
-        case HACKED_STATUS_HACKED:
-          $row .= '<span class="not-current">' . t('Changed!', array(), $translation_context) . '</span>';
-          break;
-        case HACKED_STATUS_DELETED:
-          $row .= '<span class="">' . t('Deleted', array(), $translation_context) . '</span>';
-          break;
-        case HACKED_STATUS_PERMISSION_DENIED:
-          $row .= '<span class="">' . t('Permission Denied', array(), $translation_context) . '</span>';
-          break;
-        case HACKED_STATUS_UNCHECKED:
-        default:
-          $row .= '<span class="">' . t('Unchecked', array(), $translation_context) . '</span>';
-          break;
-      }
-      $row .= '<span class="icon">' . $icon . '</span>';
-      $row .= "</div>\n";
+  $variables['files'] = [
+    '#type'       => 'table',
+    '#attributes' => ['class' => ['update']],
+    // Attach the library to a variable that gets printed always.
+    '#attached'   => [
+      'library' => [
+        'update/drupal.update.admin',
+      ],
+    ]
+  ];
 
-      $row .= '<div class="project">';
-      if (user_access('view diffs of changed files') && module_exists('diff') && ($status != HACKED_STATUS_UNHACKED) && !empty($project['diffable'][$file])) {
-        $row .= l($file, 'admin/reports/hacked/' . $project['name'] . '/diff/' . $file);
-      }
-      else {
-        $row .= check_plain($file);
-      }
-      $row .= "</div>\n";
-
-      $row .= "</div>\n";
-
-      $rows[] = array(
-        'class' => array($class),
-        'data' => array($row),
-      );
+  foreach ($project['files'] as $file => $status) {
+    if (!isset($status)) {
+      continue;
     }
-    drupal_add_css(drupal_get_path('module', 'update') . '/update.css');
-    return theme('table', array('rows' => $rows, 'attributes' => array('class' => 'update')));
+
+    $url = NULL;
+    if (\Drupal::currentUser()->hasPermission('view diffs of changed files') && \Drupal::moduleHandler()->moduleExists('diff') && ($status != HACKED_STATUS_UNHACKED) && !empty($project['diffable'][$file])) {
+      $url = Url::fromRoute('hacked.project_diff', ['project' => $project['project_name'], 'file' => $file ]);
+    }
+
+    $file_status = [
+      '#theme' => 'hacked_file_status',
+      '#file'  => [
+        'name'   => $file,
+        'status' => $status,
+        'url' => $url,
+      ],
+    ];
+
+    // Add the project status row and details.
+    $variables['files'][$file]['status'] = $file_status;
+
+    switch ($status) {
+      case HACKED_STATUS_UNHACKED:
+        $variables['files'][$file]['#attributes'] = ['class' => ['color-success']];
+        break;
+      case HACKED_STATUS_DELETED:
+        $variables['files'][$file]['#attributes'] = ['class' => ['color-error']];
+        break;
+      case HACKED_STATUS_HACKED:
+      case HACKED_STATUS_PERMISSION_DENIED:
+      case HACKED_STATUS_UNCHECKED:
+      default:
+        $variables['files'][$file]['#attributes'] = ['class' => ['color-warning']];
+        break;
+    }
+  }
+}
+
+/**
+ * @param $variables
+ */
+function template_preprocess_hacked_file_status(&$variables) {
+  switch ($variables['file']['status']) {
+    case HACKED_STATUS_UNHACKED:
+      $uri = 'core/misc/icons/73b355/check.svg';
+      $text = t('Unchanged');
+      break;
+    case HACKED_STATUS_DELETED:
+      $uri = 'core/misc/icons/e32700/error.svg';
+      $text = t('Deleted');
+      break;
+    case HACKED_STATUS_HACKED:
+      $uri = 'core/misc/icons/e29700/warning.svg';
+      $text = t('Changed!');
+      break;
+    case HACKED_STATUS_PERMISSION_DENIED:
+      $uri = 'core/misc/icons/e29700/warning.svg';
+      $text = t('Permission Denied');
+      break;
+    case HACKED_STATUS_UNCHECKED:
+    default:
+      $uri = 'core/misc/icons/e29700/warning.svg';
+      $text = t('Unchecked');
+      break;
+  }
+
+  $variables['status']['attributes'] = new Attribute();
+  $variables['status']['label'] = $text;
+  $variables['status']['icon'] = [
+    '#theme'  => 'image',
+    '#width'  => 18,
+    '#height' => 18,
+    '#uri'    => $uri,
+    '#alt'    => $text,
+    '#title'  => $text,
+  ];
 }

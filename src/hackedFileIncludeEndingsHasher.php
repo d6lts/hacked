@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * @file
+ * Contains \Drupal\hacked\hackedFileIncludeEndingsHasher.
+ */
+
+namespace Drupal\hacked;
 
 /**
  * This is a much faster, but potentially less useful file hasher.

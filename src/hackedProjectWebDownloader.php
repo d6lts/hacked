@@ -1,36 +1,50 @@
 <?php
 
 /**
+ * @file
+ * Contains \Drupal\hacked\hackedProjectWebDownloader.
+ */
+
+namespace Drupal\hacked;
+
+use Drupal\Core\StringTranslation\StringTranslationTrait;
+
+/**
  * Base class for downloading remote versions of projects.
  */
 class hackedProjectWebDownloader {
+  use StringTranslationTrait;
+
   var $project;
 
   /**
    * Constructor, pass in the project this downloaded is expected to download.
    */
-  function hackedProjectWebDownloader(&$project) {
+  function __construct(&$project) {
     $this->project = $project;
   }
 
   /**
    * Returns a temp directory to work in.
    *
-   * @param $namespace
+   * @param null $namespace
    *   The optional namespace of the temp directory, defaults to the classname.
+   * @return bool|string
    */
   function get_temp_directory($namespace = NULL) {
     if (is_null($namespace)) {
-      $namespace = get_class($this);
+      $reflect = new \ReflectionClass($this);
+      $namespace = $reflect->getShortName();
     }
-    $segments = array(
+    $segments = [
       file_directory_temp(),
       'hacked-cache-' . get_current_user(),
       $namespace,
-    );
+    ];
     $dir = implode('/', array_filter($segments));
     if (!file_prepare_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
-      watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
+      $message = $this->t('Failed to create temp directory: %dir', array('%dir' => $dir));
+      \Drupal::logger('hacked')->error($message);
       return FALSE;
     }
     return $dir;
@@ -47,7 +61,8 @@ class hackedProjectWebDownloader {
     $dir = $this->get_temp_directory() . "/$type/$name";
     // Build the destination folder tree if it doesn't already exists.
     if (!file_prepare_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
-      watchdog('hacked', 'Failed to create temp directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
+      $message = $this->t('Failed to create temp directory: %dir', ['%dir' => $dir]);
+      \Drupal::logger('hacked')->error($message);
       return FALSE;
     }
     return "$dir/$version";
@@ -104,11 +119,11 @@ class hackedProjectWebDownloader {
       rmdir($path);
     }
     else {
-      watchdog('hacked', 'Unknown file type(%path) stat: %stat ',
-        array(
-          '%path' => $path,
-          '%stat' => print_r(stat($path), 1)
-        ), WATCHDOG_ERROR);
+      $message = $this->t('Unknown file type(%path) stat: %stat ', [
+        '%path' => $path,
+        '%stat' => print_r(stat($path), 1)
+      ]);
+      \Drupal::logger('hacked')->error($message);
     }
   }
 
