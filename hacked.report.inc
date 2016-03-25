@@ -7,13 +7,13 @@
 function hacked_reports_hacked() {
   // We're going to be borrowing heavily from the update module
   module_load_include('inc', 'update', 'update.report');
-  if ($available = update_get_available(TRUE)) {
+  if ($available = mydropwizard_get_available(TRUE)) {
     module_load_include('inc', 'update', 'update.compare');
-    $data = update_calculate_project_data($available);
+    $data = mydropwizard_calculate_project_data($available);
     return theme('hacked_report', hacked_calculate_project_data($data));
   }
   else {
-    return theme('update_report', _update_no_data());
+    return theme('mydropwizard_report', _mydropwizard_no_data());
   }
 }
 
@@ -23,9 +23,9 @@ function hacked_reports_hacked() {
 function hacked_reports_rebuild() {
   // We're going to be borrowing heavily from the update module
   module_load_include('inc', 'update', 'update.report');
-  if ($available = update_get_available(TRUE)) {
+  if ($available = mydropwizard_get_available(TRUE)) {
     module_load_include('inc', 'update', 'update.compare');
-    $data = update_calculate_project_data($available);
+    $data = mydropwizard_calculate_project_data($available);
     hacked_calculate_project_data($data, TRUE, 'admin/reports/hacked');
   }
   drupal_goto('admin/reports/hacked');

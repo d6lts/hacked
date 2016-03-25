@@ -61,8 +61,8 @@ class hackedProject {
     }
 
     // Fetch the required data from the update (status) module.
-    $available = update_get_available(TRUE);
-    $data = update_calculate_project_data($available);
+    $available = mydropwizard_get_available(TRUE);
+    $data = mydropwizard_calculate_project_data($available);
 
     foreach ($data as $key => $project) {
       if ($key == $this->name) {

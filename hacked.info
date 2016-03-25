@@ -3,4 +3,4 @@ description = "Shows if drupal or any of its modules have been changed"
 package = Development
 core = 6.x
 ;dependencies[] = diff
-dependencies[] = update
+dependencies[] = mydropwizard

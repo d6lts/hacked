@@ -140,9 +140,9 @@ function drush_hacked_list_projects() {
 
   // Go get the data:
   module_load_include('inc', 'update', 'update.report');
-  if ($available = update_get_available(TRUE)) {
+  if ($available = mydropwizard_get_available(TRUE)) {
     module_load_include('inc', 'update', 'update.compare');
-    $data = update_calculate_project_data($available);
+    $data = mydropwizard_calculate_project_data($available);
     $force_rebuild = drush_get_option('force-rebuild', FALSE);
     $projects = hacked_calculate_project_data_drush($data, $force_rebuild);
     // Now print the data using drush:
@@ -194,9 +194,9 @@ function drush_hacked_list_projects() {
 function drush_hacked_lock_modified() {
   $drupal_root = drush_get_context('DRUSH_DRUPAL_ROOT');
   module_load_include('inc', 'update', 'update.report');
-  if (isset($drupal_root) && ($available = update_get_available(TRUE))) {
+  if (isset($drupal_root) && ($available = mydropwizard_get_available(TRUE))) {
     module_load_include('inc', 'update', 'update.compare');
-    $data = update_calculate_project_data($available);
+    $data = mydropwizard_calculate_project_data($available);
     $projects = hacked_calculate_project_data_drush($data, TRUE);
 
     foreach ($projects as $project) {
