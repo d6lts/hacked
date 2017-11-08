@@ -482,36 +482,13 @@ class hackedProjectWebFilesDownloader extends hackedProjectWebDownloader {
  *
  * @deprecated
  */
-class hackedProjectWebCVSDownloader extends hackedProjectWebDownloader {
+class hackedProjectWebCVSDownloader extends hackedProjectWebFilesDownloader {
 
   var $base_filename = '';
 
   function hackedProjectWebCVSDownloader(&$project, $base_filename) {
-    parent::hackedProjectWebDownloader($project);
+    parent::hackedProjectWebFilesDownloader($project);
     $this->base_filename = $base_filename;
-  }
-
-  /**
-   * Get information about the CVS location of the project.
-   */
-  function download_link() {
-    $info = array();
-    $pinfo = &$this->project->project_info;
-    // Special handling for core.
-    if ($pinfo['project_type'] == 'core') {
-      $info['cvsroot'] = ':pserver:anonymous:anonymous@cvs.drupal.org:/cvs/drupal';
-      $info['module'] = 'drupal';
-      $info['checkout_folder'] = $pinfo['name'] . '-' . $pinfo['info']['version'];
-      $info['tag'] = $this->cvs_deploy_get_tag($this->base_filename);
-    }
-    else {
-      $info['cvsroot'] = ':pserver:anonymous:anonymous@cvs.drupal.org:/cvs/drupal-contrib';
-      $info['module'] = 'contributions/' . $pinfo['project_type'] . 's/' . $pinfo['name'];
-      $info['checkout_folder'] = $pinfo['name'];
-      $info['tag'] = $this->cvs_deploy_get_tag($this->base_filename);
-    }
-
-    return $info;
   }
 
   /**
@@ -546,29 +523,6 @@ class hackedProjectWebCVSDownloader extends hackedProjectWebDownloader {
     }
 
     return $version;
-  }
-
-  function download() {
-    $dir = $this->get_destination();
-    $release_info = $this->download_link();
-
-    // TODO: Only delete if not a TAG.
-    if (file_exists($dir)) {
-      if ($this->is_cvs_tag($release_info['tag'])) {
-        return $dir;
-      }
-      else {
-        // This is not a CVS tag, so we need to re-download.
-        $this->remove_dir($dir);
-      }
-    }
-
-    if (hacked_cvs_checkout($release_info['cvsroot'], $release_info['module'], $dir, $release_info['checkout_folder'], $release_info['tag'])) {
-      return $dir;
-    }
-
-    // Something went wrong:
-    return FALSE;
   }
 
   function get_destination() {
