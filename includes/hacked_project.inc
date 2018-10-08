@@ -34,7 +34,7 @@ class hackedProject {
   /**
    * Constructor.
    */
-  function hackedProject($name) {
+  function __construct($name) {
     $this->name = $name;
     $this->remote_files_downloader = new hackedProjectWebFilesDownloader($this);
   }
@@ -330,7 +330,7 @@ class hackedProjectWebDownloader {
   /**
    * Constructor, pass in the project this downloaded is expected to download.
    */
-  function hackedProjectWebDownloader(&$project) {
+  function __construct(&$project) {
     $this->project = $project;
   }
 
@@ -486,8 +486,8 @@ class hackedProjectWebCVSDownloader extends hackedProjectWebDownloader {
 
   var $base_filename = '';
 
-  function hackedProjectWebCVSDownloader(&$project, $base_filename) {
-    parent::hackedProjectWebDownloader($project);
+  function __construct(&$project, $base_filename) {
+    parent::__construct($project);
     $this->base_filename = $base_filename;
   }
 
@@ -610,7 +610,7 @@ class hackedFileGroup {
   /**
    * Constructor.
    */
-  function hackedFileGroup($base_path) {
+  function __construct($base_path) {
     $this->base_path = $base_path;
     $this->hasher = hacked_get_file_hasher();
   }
